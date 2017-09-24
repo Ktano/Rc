@@ -8,11 +8,15 @@
 #include <stdlib.h>
 
 #define DEFAULT_PORT 58006
-#define BUFFER_MAX 80
+#define BUFFER_MAX 128
 
 int main(int argc, char **argv){
     int port= DEFAULT_PORT,i;
+    int fd; //used for comunication
     char *servername;
+
+    struct hostent *hostptr;
+    struct sockaddr_in serveraddr; 
 
     for (i = 0; i < argc; i++)
     {
@@ -22,4 +26,21 @@ int main(int argc, char **argv){
     }
 
     printf("Connecting to %s:%d\n",servername,port);
+
+    fd=socket(AF_INET,SOCK_STREAM,0); //need to test for return -1
+
+    if(servername==NULL){
+        servername= malloc(BUFFER_MAX*sizeof(char));
+        if(gethostname(servername,128)==-1){
+            printf("error getting local host name: %s\n",strerror(errno));
+            exit(EXIT_SUCCESS);
+        }
+
+        printf("Server name: %s",servername);
+    }
+
+    hostptr=gethostbyname(servername);
+    
+
+    free(servername);
 }
