@@ -11,22 +11,22 @@ def readTxtFile(f):
 	return 
 
 def low(f):
-with open(filename, 'r+') as f:
-	text = f.read()
-	f.seek(0)
-	f.write(text.lower())
-f.close
+	with open(filename, 'r+') as f:
+		text = f.read()
+		f.seek(0)
+		f.write(text.lower())
+	f.close()
 
 def upp(f):
-with open(filename, 'r+') as f:
-	text = f.read()
-	f.seek(0)
-	f.write(text.upper())
-f.close
+	with open(filename, 'r+') as f:
+		text = f.read()
+		f.seek(0)
+		f.write(text.upper())
+	f.close()
 
 
 # 'main'
-filename = "input3.txt"
+filename = "input.txt"
 low(filename)
 readTxtFile(filename)
 upp(filename)
