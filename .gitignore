@@ -53,3 +53,9 @@ dkms.conf
 
 # visual studio code ignore
 .vscode
+
+#ignore zip files
+*.zip
+
+#ignore txt files generated
+*.txt
