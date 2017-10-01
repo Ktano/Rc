@@ -12,6 +12,10 @@
 #include <stdlib.h>
 #include <errno.h>
 #include <fcntl.h>
+#include <sys/socket.h>
+#include <netinet/in.h>
+#include <netdb.h>
+
 
 int tcpCommand(int tcpfd, char* maincommand, char* argument, char* file)
 {
@@ -32,22 +36,51 @@ int tcpCommand(int tcpfd, char* maincommand, char* argument, char* file)
     }
 
     if (argument == NULL)
-        snprintf(buffer,strlen(maincommand), "%s", maincommand);
-    else
-        snprintf(buffer,strlen(maincommand)+strlen(argument)+1, "%s %s ", maincommand, argument);
-
-    write(tcpfd, buffer, strlen(buffer));
-
-    if (size!=0)
-    {   
-        sprintf(buffer, "%d ", size);
+        snprintf(buffer,strlen(maincommand)+2, "%s\n", maincommand);
+    else if ( file==NULL )
+        snprintf(buffer,strlen(maincommand)+strlen(argument)+3, "%s %s\n", maincommand, argument);
+    else{
+        snprintf(buffer,strlen(maincommand)+strlen(argument)+4, "%s %s %d ", maincommand, argument, size);
         write(tcpfd, buffer, strlen(buffer));
         while (size>0){
             bytesRead=read(fd2,buffer,128);
             write(fd2,buffer,bytesRead);
             size-=bytesRead;
         }
+        write(tcpfd, "\n", strlen("\n"));
+        return 0;
     }
-    write(tcpfd, "\n", strlen("\n"));
+
+    write(tcpfd, buffer, strlen(buffer));
     return 0;
+}
+
+
+/* creates a TCP connected to the provided servername on port
+// returns -1 in case there is a problem creating the connection
+*/
+int TCPconnect(char* servername, int port){
+    int fd;
+    struct hostent *hostptr;
+    struct sockaddr_in serveraddr;
+
+    if((fd = socket(AF_INET, SOCK_STREAM, 0))==-1){
+        printf("error: %s\n", strerror(errno));
+        return -1;
+    }
+
+    /* structure definition to connect to server*/
+    hostptr = gethostbyname(servername);
+    memset((void *)&serveraddr, (int)'\0', sizeof(serveraddr));
+    serveraddr.sin_family = AF_INET;
+    serveraddr.sin_addr.s_addr = ((struct in_addr *)(hostptr->h_addr_list[0]))->s_addr;
+    serveraddr.sin_port = htons((u_short)port);
+
+    if (connect(fd, (struct sockaddr *)&serveraddr, sizeof(serveraddr)) == -1)
+    {
+    printf("error: %s\n", strerror(errno));
+    close(fd);
+    return -1;
+    }
+    return fd;
 }

@@ -10,5 +10,6 @@
 #define FPT_SIZE 3
 
 int tcpCommand(int tcpfd, char* maincommand, char* argument, char* file);
+int TCPconnect(char* servername, int port);
 
 #endif

@@ -1,3 +1,5 @@
+#ifndef FPT_H
+#define FPT_H
 
 #define PTC_WORDCOUNT "WCT"
 #define PTC_LONGESTWORD "FLW"
@@ -15,3 +17,5 @@
 #define DSC_LOWER "Convert text to lower case"
 
 char* taskDescription(char* PTC);
+
+#endif

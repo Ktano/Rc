@@ -3,9 +3,6 @@
 #include "fpt.h"
 #include <unistd.h>
 #include <sys/types.h>
-#include <sys/socket.h>
-#include <netinet/in.h>
-#include <netdb.h>
 #include <string.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -20,7 +17,6 @@
 #define COMANDO_LIST "list"
 #define COMANDO_REQUEST "request"
 
-
 int main(int argc, char **argv)
 {
   int port = DEFAULT_PORT, i, bytesRead, bytesToRead;
@@ -29,9 +25,6 @@ int main(int argc, char **argv)
   char commandlinebuffer[BUFFER_MAX];
   char *args[MAXARGS + 1];
   char *token;
-
-  struct hostent *hostptr;
-  struct sockaddr_in serveraddr;
 
   /* sets the default value for the server name*/
   if (gethostname(servername, BUFFER_MAX) == -1)
@@ -49,17 +42,9 @@ int main(int argc, char **argv)
       strcpy(servername, argv[i + 1]);
   }
 
-  fd = socket(AF_INET, SOCK_STREAM, 0); //need to test for return -1
-
-  /* structure definition to connect to server*/
-  hostptr = gethostbyname(servername);
-  memset((void *)&serveraddr, (int)'\0', sizeof(serveraddr));
-  serveraddr.sin_family = AF_INET;
-  serveraddr.sin_addr.s_addr = ((struct in_addr *)(hostptr->h_addr_list[0]))->s_addr;
-  serveraddr.sin_port = htons((u_short)port);
-
   while (1)
   {
+    printf(">> ");
     /* read arguments from commandline*/
     int numargs;
     numargs = readLineArguments(args, MAXARGS + 1, commandlinebuffer, BUFFER_MAX);
@@ -72,11 +57,9 @@ int main(int argc, char **argv)
     /* commando List ignores if any other arguments are passed*/
     else if (strcmp(args[0], COMANDO_LIST) == 0)
     {
-      if (connect(fd, (struct sockaddr *)&serveraddr, sizeof(serveraddr)) == -1)
-      {
-        printf("error: %s\n", strerror(errno));
+
+      if ((fd = TCPconnect(servername, port)) == -1)
         continue;
-      }
 
       tcpCommand(fd, "LST", NULL, NULL);
 
@@ -84,25 +67,29 @@ int main(int argc, char **argv)
       if ((bytesRead = read(fd, buffer, TCP_HEADER)) == -1)
       {
         printf("error: %s\n", strerror(errno));
+        close(fd);
         continue;
       }
 
       token = strtok(buffer, PROTOCOL_DIVIDER);
       if (strcmp(token, TCP_COMMAND_PROCTASK) != 0)
       {
-        printf("list:Unexpected Reply Received");
+        printf("list:Unexpected Reply Received\n");
+        close(fd);
         continue;
       }
 
       token = strtok(NULL, PROTOCOL_DIVIDER);
-      if (strcmp(token, TCP_ARG_EOF) != 0)
+      if (strcmp(token, TCP_ARG_EOF) == 0)
       {
-        printf("list: There are no servers currently availabe");
+        printf("list: There are no servers currently availabe\n");
+        close(fd);
         continue;
       }
-      else if (strcmp(token, TCP_ARG_ERR) != 0)
+      else if (strcmp(token, TCP_ARG_ERR) == 0)
       {
-        printf("list: The request is not currectly formulated");
+        printf("list: The request is not currectly formulated\n");
+        close(fd);
         continue;
       }
       else
@@ -117,20 +104,20 @@ int main(int argc, char **argv)
         if ((bytesRead = read(fd, buffer, TCP_HEADER)) == -1)
         {
           printf("error: %s\n", strerror(errno));
+          close(fd);
           continue;
         }
         token = strtok(buffer, PROTOCOL_DIVIDER);
-        i=1;
+        i = 1;
         while (token != NULL)
         {
-          printf("%d/t%s/n/t%s",i, token,taskDescription(token));
+          printf("%d/t%s/n/t%s", i, token, taskDescription(token));
           token = strtok(buffer, PROTOCOL_DIVIDER);
           i++;
         }
         bytesToRead -= bytesRead;
       }
     }
-
     /* commando Request*/
     else if (strcmp(args[0], COMANDO_REQUEST) == 0)
     {
@@ -140,16 +127,14 @@ int main(int argc, char **argv)
         continue;
       }
 
-      if (connect(fd, (struct sockaddr *)&serveraddr, sizeof(serveraddr)) == -1)
-      {
-        printf("error: %s\n", strerror(errno));
-        continue;
-      }
+      if ((fd = TCPconnect(servername, port)) == -1)
+      continue;
+
     }
     /* Outros commandos desconhecidos*/
     else
     {
-      printf("Unknown Command try again.");
+      printf("Unknown Command try again.\n");
     }
   }
 }
