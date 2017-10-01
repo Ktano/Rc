@@ -141,6 +141,7 @@ int main(int argc, char **argv)
       }
       close(fd);
     }
+
     /* commando Request*/
     else if (strcmp(args[0], COMANDO_REQUEST) == 0)
     {
@@ -152,6 +153,10 @@ int main(int argc, char **argv)
 
       if ((fd = TCPconnect(servername, port)) == -1)
         continue;
+
+      if(tcpCommand(fd, "REQ", args[1], args[2])==-1)
+        continue;
+
     }
     /* Outros commandos desconhecidos*/
     else
