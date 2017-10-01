@@ -1,5 +1,6 @@
 #include "fpt.h"
 #include "string.h"
+
 char* taskDescription(char* PTC)
 {
     if (strcmp(PTC, PTC_WORDCOUNT) == 0)
