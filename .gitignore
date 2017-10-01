@@ -50,3 +50,17 @@ modules.order
 Module.symvers
 Mkfile.old
 dkms.conf
+
+# visual studio code ignore
+.vscode
+
+#ignore zip files
+*.zip
+
+#ignore txt files generated
+*.txt
+
+#ignore final compiled files
+user
+CS
+WS
