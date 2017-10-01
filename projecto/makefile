@@ -17,3 +17,5 @@ clean:
 	rm -f -d -r *.o user input_files output_files
 zip:
 	zip ../proj_6.zip *.c *.h makefile
+testuser:
+	./user -n tejo.ist.utl.pt -p 58011
