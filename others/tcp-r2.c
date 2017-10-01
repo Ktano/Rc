@@ -20,7 +20,7 @@ int main(int argc, char const *argv[])
 {
 	char clt_message[MESSAGE_MAX];
 	char srv_message[MESSAGE_MAX];
-	strcpy(clt_message,"we got it?");
+	strcpy(srv_message,"we got it");
 	fd = socket(AF_INET,SOCK_STREAM,0);
 
 	memset((void*)&serveraddr,(int)'\0',sizeof(serveraddr));
