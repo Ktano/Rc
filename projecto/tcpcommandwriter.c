@@ -21,7 +21,7 @@ int tcpCommand(int tcpfd, char* maincommand, char* argument, char* file)
 {
     char buffer[128];
     struct stat buf;    
-    int fd2, size=0, bytesRead;
+    int fd2, size=0, bytesRead, bytesWriten;
 
     if (file != NULL)
     {
@@ -51,7 +51,10 @@ int tcpCommand(int tcpfd, char* maincommand, char* argument, char* file)
         return 0;
     }
 
-    write(tcpfd, buffer, strlen(buffer));
+    if((bytesWriten=write(tcpfd, buffer, strlen(buffer)))<strlen(buffer)){
+        printf("error: written less then expected bytes");
+        return -1;
+    }
     return 0;
 }
 

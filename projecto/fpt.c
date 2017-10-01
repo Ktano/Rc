@@ -10,7 +10,7 @@ char* taskDescription(char* PTC)
         return DSC_UPPER;
     if (strcmp(PTC, PTC_LOWER) == 0)
         return DSC_LOWER;
-    return NULL;
+    return "";
 }
 
 

@@ -24,7 +24,7 @@ int main(int argc, char **argv)
   char servername[BUFFER_MAX], buffer[BUFFER_MAX];
   char commandlinebuffer[BUFFER_MAX];
   char *args[MAXARGS + 1];
-  char *token;
+  char *token, tmp[128];
 
   /* sets the default value for the server name*/
   if (gethostname(servername, BUFFER_MAX) == -1)
@@ -61,7 +61,8 @@ int main(int argc, char **argv)
       if ((fd = TCPconnect(servername, port)) == -1)
         continue;
 
-      tcpCommand(fd, "LST", NULL, NULL);
+      if(tcpCommand(fd, "LST", NULL, NULL)==-1)
+        continue;
 
       bytesRead = 0;
       if ((bytesRead = read(fd, buffer, TCP_HEADER)) == -1)
@@ -70,6 +71,8 @@ int main(int argc, char **argv)
         close(fd);
         continue;
       }
+
+      buffer[bytesRead]='\0';
 
       token = strtok(buffer, PROTOCOL_DIVIDER);
       if (strcmp(token, TCP_COMMAND_PROCTASK) != 0)
@@ -99,24 +102,44 @@ int main(int argc, char **argv)
 
       printf("Available File Processing Tasks:\n");
 
+      token = strtok(NULL, PROTOCOL_DIVIDER);
+      tmp[0] = '\0';
+
       while (bytesToRead > 0)
       {
-        if ((bytesRead = read(fd, buffer, TCP_HEADER)) == -1)
+        if (token != NULL)
+        {
+          strcpy(tmp, token);
+          bytesToRead -= strlen(token);
+        }
+
+        if ((bytesRead = read(fd, buffer, BUFFER_MAX-1)) == -1)
         {
           printf("error: %s\n", strerror(errno));
           close(fd);
           continue;
         }
+        buffer[bytesRead]='\0'; //terminates the buffer
+
         token = strtok(buffer, PROTOCOL_DIVIDER);
         i = 1;
         while (token != NULL)
         {
-          printf("%d/t%s/n/t%s", i, token, taskDescription(token));
-          token = strtok(buffer, PROTOCOL_DIVIDER);
+          if (strlen(token) < FPT_SIZE)
+            strcat(tmp, token);
+          else
+            strcpy(tmp, token);
+          if (strlen(tmp) == FPT_SIZE)
+          {
+            printf("%d\t%s\t%s\n", i, tmp, taskDescription(tmp));
+            tmp[0] = '\0';
+          }
+          token = strtok(NULL, PROTOCOL_DIVIDER);
           i++;
         }
         bytesToRead -= bytesRead;
       }
+      close(fd);
     }
     /* commando Request*/
     else if (strcmp(args[0], COMANDO_REQUEST) == 0)
@@ -128,8 +151,7 @@ int main(int argc, char **argv)
       }
 
       if ((fd = TCPconnect(servername, port)) == -1)
-      continue;
-
+        continue;
     }
     /* Outros commandos desconhecidos*/
     else
