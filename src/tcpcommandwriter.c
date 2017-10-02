@@ -21,7 +21,7 @@ int tcpCommand(int tcpfd, char* maincommand, char* argument, char* file)
 {
     char buffer[128];
     struct stat buf;    
-    int fd2, size=0, bytesRead, bytesWriten;
+    int fd2, size=0, bytesRead;
 
     if (file != NULL)
     {
@@ -35,26 +35,29 @@ int tcpCommand(int tcpfd, char* maincommand, char* argument, char* file)
         }
     }
 
-    if (argument == NULL)
+    if (argument == NULL){
         snprintf(buffer,strlen(maincommand)+2, "%s\n", maincommand);
-    else if ( file==NULL )
+    	write(tcpfd, buffer, strlen(buffer));
+    	return 0;
+    }
+    else if ( file==NULL ){
         snprintf(buffer,strlen(maincommand)+strlen(argument)+3, "%s %s\n", maincommand, argument);
+    	write(tcpfd, buffer, strlen(buffer));
+    	return 0;
+    }
     else{
-        snprintf(buffer,strlen(maincommand)+strlen(argument)+4, "%s %s %d ", maincommand, argument, size);
+        sprintf(buffer/*,strlen(maincommand)+strlen(argument)+4*/, "%s %s %d ", maincommand, argument, size);
         write(tcpfd, buffer, strlen(buffer));
-        while (size>0){
-            bytesRead=read(fd2,buffer,128);
-            write(fd2,buffer,bytesRead);
-            size-=bytesRead;
-        }
-        write(tcpfd, "\n", strlen("\n"));
-        return 0;
     }
 
-    if((bytesWriten=write(tcpfd, buffer, strlen(buffer)))<strlen(buffer)){
-        printf("error: written less then expected bytes");
-        return -1;
+
+
+    while (size>0){
+            bytesRead=read(fd2,buffer,128);
+            write(tcpfd,buffer,bytesRead);
+            size-=bytesRead;
     }
+    write(tcpfd, "\n", strlen("\n"));
     return 0;
 }
 
