@@ -76,7 +76,10 @@ int TCPconnect(char* servername, int port){
     }
 
     /* structure definition to connect to server*/
-    hostptr = gethostbyname(servername);
+    if((hostptr = gethostbyname(servername))==NULL){
+        printf("error: %s\n", strerror(errno));
+        return -1;
+    };
     memset((void *)&serveraddr, (int)'\0', sizeof(serveraddr));
     serveraddr.sin_family = AF_INET;
     serveraddr.sin_addr.s_addr = ((struct in_addr *)(hostptr->h_addr_list[0]))->s_addr;
