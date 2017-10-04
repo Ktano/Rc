@@ -84,9 +84,9 @@ int TCPconnect(char* servername, int port){
 
     if (connect(fd, (struct sockaddr *)&serveraddr, sizeof(serveraddr)) == -1)
     {
-    printf("error: %s\n", strerror(errno));
-    close(fd);
-    return -1;
+      printf("error: %s\n", strerror(errno));
+      close(fd);
+      return -1;
     }
     return fd;
 }
@@ -94,9 +94,9 @@ int TCPconnect(char* servername, int port){
 int TCPacceptint(int port){
 
   int fd, newfd;
-  struct hostent *hostptr;
+
   struct sockaddr_in serveraddr, clientaddr;
-  int clientlen;
+  socklen_t clientlen;
 
   fd = socket(AF_INET,SOCK_STREAM,0);
 
@@ -105,40 +105,55 @@ int TCPacceptint(int port){
   serveraddr.sin_addr.s_addr = htonl(INADDR_ANY);
   serveraddr.sin_port = htons((u_short)port);
 
-  bind(fd,(struct sockaddr*)&serveraddr, sizeof(serveraddr));
+  bind(fd, (struct sockaddr*) &serveraddr, sizeof(serveraddr));
 
   listen(fd,5);
 
   clientlen = sizeof(clientaddr);
-  newfd = accept(fd,(struct sockaddr*)&clientaddr, &clientlen);
+  newfd = accept( fd, (struct sockaddr*) &clientaddr, &clientlen);
 
 
   close(fd);
   return newfd;
 }
 
-void UDPconnect(){
+int UDPconnect(int port){
 
-    int fd;
-    struct hostent *hostptr;
+    int fd, sourcefile;
+
     struct sockaddr_in serveraddr, clientaddr;
-    int addrlen;
-    char buffer[80];
-    FILE *sourcefile = fopen("file_processing_tasks.txt","w");
-    
+    socklen_t addrlen;
+    char buffer[80], WScommand[4], writeonfile[50];
+    int recConnect;
+    sourcefile = open("file_processing_tasks.txt",O_WRONLY);
+    if (sourcefile == -1)
+    {
+        printf("ERRO: %s", strerror(errno));
+        return -1;
+    }
+
     fd = socket(AF_INET,SOCK_DGRAM,0);
 
     memset((void*)&serveraddr,(int)'\0', sizeof(serveraddr));
     serveraddr.sin_family = AF_INET;
     serveraddr.sin_addr.s_addr = htonl(INADDR_ANY);
-    serveraddr.sin_port = htons((u_short)PORT);
+    serveraddr.sin_port = htons((u_short)port);
 
     bind(fd,(struct sockaddr*)&serveraddr,sizeof(serveraddr));
 
     addrlen = sizeof(clientaddr);
-    if(recvfrom(fd, buffer, sizeof(buffer), 0, (struct sockaddr*)&clientaddr, &addrlen)==1){
-      sendto(fd, "RAK OK\n", 8, 0, (struct sockaddr*)&clientaddr,addrlen);
-    }else{
-      sendto(fd, "RAK NOK\n", 9, 0, (struct sockaddr*)&clientaddr,addrlen);
+    recConnect = recvfrom(fd, buffer, sizeof(buffer), 0, (struct sockaddr*)&clientaddr, &addrlen);
+
+    read(fd, WScommand, 4);
+    if(strcmp(WScommand, "REG ")==0){
+      if((recConnect == -1) && (sourcefile == -1)){
+        sendto(fd, "RAK NOK\n", 9, 0, (struct sockaddr*)&clientaddr,addrlen);
+      }else{
+        strcat(writeonfile, "+ ");
+        strcat(writeonfile, buffer);
+        if(write( sourcefile, writeonfile, strlen(writeonfile)))
+          sendto(fd, "RAK OK\n", 8, 0, (struct sockaddr*)&clientaddr,addrlen);
+      }
     }
+    return 0;
 }
