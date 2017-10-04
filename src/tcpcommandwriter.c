@@ -96,3 +96,55 @@ int TCPconnect(char *servername, int port)
     }
     return fd;
 }
+
+int TCPacceptint(int port){
+
+  int fd, newfd;
+  struct hostent *hostptr;
+  struct sockaddr_in serveraddr, clientaddr;
+  int clientlen;
+
+  fd = socket(AF_INET,SOCK_STREAM,0);
+
+  memset( (void*)&serveraddr,(int) '\0', sizeof(serveraddr));
+  serveraddr.sin_family = AF_INET;
+  serveraddr.sin_addr.s_addr = htonl(INADDR_ANY);
+  serveraddr.sin_port = htons((u_short)port);
+
+  bind(fd,(struct sockaddr*)&serveraddr, sizeof(serveraddr));
+
+  listen(fd,5);
+
+  clientlen = sizeof(clientaddr);
+  newfd = accept(fd,(struct sockaddr*)&clientaddr, &clientlen);
+
+
+  close(fd);
+  return newfd;
+}
+
+void UDPconnect(){
+
+    int fd;
+    struct hostent *hostptr;
+    struct sockaddr_in serveraddr, clientaddr;
+    int addrlen;
+    char buffer[80];
+    FILE *sourcefile = fopen("file_processing_tasks.txt","w");
+    
+    fd = socket(AF_INET,SOCK_DGRAM,0);
+
+    memset((void*)&serveraddr,(int)'\0', sizeof(serveraddr));
+    serveraddr.sin_family = AF_INET;
+    serveraddr.sin_addr.s_addr = htonl(INADDR_ANY);
+    serveraddr.sin_port = htons((u_short)PORT);
+
+    bind(fd,(struct sockaddr*)&serveraddr,sizeof(serveraddr));
+
+    addrlen = sizeof(clientaddr);
+    if(recvfrom(fd, buffer, sizeof(buffer), 0, (struct sockaddr*)&clientaddr, &addrlen)==1){
+      sendto(fd, "RAK OK\n", 8, 0, (struct sockaddr*)&clientaddr,addrlen);
+    }else{
+      sendto(fd, "RAK NOK\n", 9, 0, (struct sockaddr*)&clientaddr,addrlen);
+    }
+}
