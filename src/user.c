@@ -43,7 +43,7 @@ int main(int argc, char **argv)
       port = atoi(argv[i + 1]);
     if (strcmp(argv[i], "-n") == 0)
       strcpy(servername, argv[i + 1]);
-  }
+  }1
 
   while (1)
   {
@@ -191,16 +191,21 @@ int main(int argc, char **argv)
       }
       else
       {
-        strcpy(tmp, token);
-        strcat(tmp,args[2]);
+        strcpy(tmp, args[2]);
+        strcat(tmp,"-");
+        strcat(tmp,args[1]);
+        strcat(tmp,"-");
+        strcat(tmp,token);
       }
       token = strtok(NULL, PROTOCOL_DIVIDER);
       bytesToRead = atoi(token);
 
-      fd2=open(tmp,O_CREAT|O_WRONLY|S_IRWXU|S_IRWXG);
+      fd2=open(tmp,O_CREAT|O_WRONLY,S_IRWXU|S_IRWXG);
       token = strtok(NULL, "");
-      write(fd2,token,strlen(token));
-      bytesToRead-=strlen(token);
+      if(token!=NULL){
+        write(fd2,token,strlen(token));
+        bytesToRead-=strlen(token);
+      }
 
       while(bytesToRead>0){
         if ((bytesRead = read(fd, buffer, BUFFER_MAX-1)) == -1)
@@ -210,6 +215,7 @@ int main(int argc, char **argv)
           continue;
         }
         buffer[bytesRead]='\0';
+
         if (bytesRead<=bytesToRead ){
           write(fd2,buffer,strlen(buffer));
           bytesToRead-=bytesRead;

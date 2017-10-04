@@ -30,7 +30,7 @@ int tcpCommand(int tcpfd, char* maincommand, char* argument, char* file)
         fd2 = open(file,O_RDONLY);
         if (fd2 == -1)
         {
-            printf("ERRO: %s", strerror(errno));
+            printf("ERRO: %s\n", strerror(errno));
             return -1;
         }
     }
