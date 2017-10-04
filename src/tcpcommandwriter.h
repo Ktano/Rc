@@ -11,5 +11,7 @@
 
 int tcpCommand(int tcpfd, char* maincommand, char* argument, char* file);
 int TCPconnect(char* servername, int port);
+int TCPaccept();
+void UDPconnect();
 
 #endif

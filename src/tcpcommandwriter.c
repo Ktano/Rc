@@ -20,8 +20,8 @@
 int tcpCommand(int tcpfd, char* maincommand, char* argument, char* file)
 {
     char buffer[128];
-    struct stat buf;    
-    int fd2, size=0, bytesRead, bytesWriten;
+    struct stat buf;
+    int fd2, size=0, bytesRead;
 
     if (file != NULL)
     {
@@ -35,26 +35,29 @@ int tcpCommand(int tcpfd, char* maincommand, char* argument, char* file)
         }
     }
 
-    if (argument == NULL)
+    if (argument == NULL){
         snprintf(buffer,strlen(maincommand)+2, "%s\n", maincommand);
-    else if ( file==NULL )
+    	write(tcpfd, buffer, strlen(buffer));
+    	return 0;
+    }
+    else if ( file==NULL ){
         snprintf(buffer,strlen(maincommand)+strlen(argument)+3, "%s %s\n", maincommand, argument);
+    	write(tcpfd, buffer, strlen(buffer));
+    	return 0;
+    }
     else{
-        snprintf(buffer,strlen(maincommand)+strlen(argument)+4, "%s %s %d ", maincommand, argument, size);
+        sprintf(buffer/*,strlen(maincommand)+strlen(argument)+4*/, "%s %s %d ", maincommand, argument, size);
         write(tcpfd, buffer, strlen(buffer));
-        while (size>0){
-            bytesRead=read(fd2,buffer,128);
-            write(fd2,buffer,bytesRead);
-            size-=bytesRead;
-        }
-        write(tcpfd, "\n", strlen("\n"));
-        return 0;
     }
 
-    if((bytesWriten=write(tcpfd, buffer, strlen(buffer)))<strlen(buffer)){
-        printf("error: written less then expected bytes");
-        return -1;
+
+
+    while (size>0){
+            bytesRead=read(fd2,buffer,128);
+            write(tcpfd,buffer,bytesRead);
+            size-=bytesRead;
     }
+    write(tcpfd, "\n", strlen("\n"));
     return 0;
 }
 
@@ -86,4 +89,56 @@ int TCPconnect(char* servername, int port){
     return -1;
     }
     return fd;
+}
+
+int TCPacceptint(int port){
+
+  int fd, newfd;
+  struct hostent *hostptr;
+  struct sockaddr_in serveraddr, clientaddr;
+  int clientlen;
+
+  fd = socket(AF_INET,SOCK_STREAM,0);
+
+  memset( (void*)&serveraddr,(int) '\0', sizeof(serveraddr));
+  serveraddr.sin_family = AF_INET;
+  serveraddr.sin_addr.s_addr = htonl(INADDR_ANY);
+  serveraddr.sin_port = htons((u_short)port);
+
+  bind(fd,(struct sockaddr*)&serveraddr, sizeof(serveraddr));
+
+  listen(fd,5);
+
+  clientlen = sizeof(clientaddr);
+  newfd = accept(fd,(struct sockaddr*)&clientaddr, &clientlen);
+
+
+  close(fd);
+  return newfd;
+}
+
+void UDPconnect(){
+
+    int fd;
+    struct hostent *hostptr;
+    struct sockaddr_in serveraddr, clientaddr;
+    int addrlen;
+    char buffer[80];
+    FILE *sourcefile = fopen("file_processing_tasks.txt","w");
+    
+    fd = socket(AF_INET,SOCK_DGRAM,0);
+
+    memset((void*)&serveraddr,(int)'\0', sizeof(serveraddr));
+    serveraddr.sin_family = AF_INET;
+    serveraddr.sin_addr.s_addr = htonl(INADDR_ANY);
+    serveraddr.sin_port = htons((u_short)PORT);
+
+    bind(fd,(struct sockaddr*)&serveraddr,sizeof(serveraddr));
+
+    addrlen = sizeof(clientaddr);
+    if(recvfrom(fd, buffer, sizeof(buffer), 0, (struct sockaddr*)&clientaddr, &addrlen)==1){
+      sendto(fd, "RAK OK\n", 8, 0, (struct sockaddr*)&clientaddr,addrlen);
+    }else{
+      sendto(fd, "RAK NOK\n", 9, 0, (struct sockaddr*)&clientaddr,addrlen);
+    }
 }
