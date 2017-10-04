@@ -22,7 +22,7 @@
 int main(int argc, char **argv)
 {
   int port = DEFAULT_PORT, i, bytesRead, bytesToRead;
-  int fd; /*used for TCP comunication*/
+  int fd;  /*used for TCP comunication*/
   int fd2; /*used to write to file*/
   char servername[BUFFER_MAX], buffer[BUFFER_MAX];
   char commandlinebuffer[BUFFER_MAX];
@@ -43,9 +43,10 @@ int main(int argc, char **argv)
       port = atoi(argv[i + 1]);
     if (strcmp(argv[i], "-n") == 0)
       strcpy(servername, argv[i + 1]);
-  }1
+  }
+  1
 
-  while (1)
+      while (1)
   {
     printf(">> ");
     /* read arguments from commandline*/
@@ -64,7 +65,7 @@ int main(int argc, char **argv)
       if ((fd = TCPconnect(servername, port)) == -1)
         continue;
 
-      if(tcpCommand(fd, "LST", NULL, NULL)==-1)
+      if (tcpCommand(fd, "LST", NULL, NULL) == -1)
         continue;
 
       bytesRead = 0;
@@ -75,7 +76,7 @@ int main(int argc, char **argv)
         continue;
       }
 
-      buffer[bytesRead]='\0';
+      buffer[bytesRead] = '\0';
 
       token = strtok(buffer, PROTOCOL_DIVIDER);
       if (strcmp(token, TCP_COMMAND_PROCTASK) != 0)
@@ -116,13 +117,13 @@ int main(int argc, char **argv)
           bytesToRead -= strlen(token);
         }
 
-        if ((bytesRead = read(fd, buffer, BUFFER_MAX-1)) == -1)
+        if ((bytesRead = read(fd, buffer, BUFFER_MAX - 1)) == -1)
         {
           printf("error: %s\n", strerror(errno));
           close(fd);
           continue;
         }
-        buffer[bytesRead]='\0'; /*terminates the buffer*/
+        buffer[bytesRead] = '\0'; /*terminates the buffer*/
 
         token = strtok(buffer, PROTOCOL_DIVIDER);
         i = 1;
@@ -157,16 +158,16 @@ int main(int argc, char **argv)
       if ((fd = TCPconnect(servername, port)) == -1)
         continue;
 
-      if(tcpCommand(fd, "REQ", args[1], args[2])==-1)
+      if (tcpCommand(fd, "REQ", args[1], args[2]) == -1)
         continue;
-      
-      if ((bytesRead = read(fd, buffer, BUFFER_MAX-1)) == -1)
+
+      if ((bytesRead = read(fd, buffer, BUFFER_MAX - 1)) == -1)
       {
         printf("error: %s\n", strerror(errno));
         close(fd);
         continue;
       }
-      buffer[bytesRead]='\0';
+      buffer[bytesRead] = '\0';
 
       token = strtok(buffer, PROTOCOL_DIVIDER);
       if (strcmp(token, TCP_COMMAND_REPLY) != 0)
@@ -192,39 +193,44 @@ int main(int argc, char **argv)
       else
       {
         strcpy(tmp, args[2]);
-        strcat(tmp,"-");
-        strcat(tmp,args[1]);
-        strcat(tmp,"-");
-        strcat(tmp,token);
+        strcat(tmp, "-");
+        strcat(tmp, args[1]);
+        strcat(tmp, "-");
+        strcat(tmp, token);
       }
       token = strtok(NULL, PROTOCOL_DIVIDER);
       bytesToRead = atoi(token);
 
-      fd2=open(tmp,O_CREAT|O_WRONLY,S_IRWXU|S_IRWXG);
+      fd2 = open(tmp, O_CREAT | O_WRONLY, S_IRWXU | S_IRWXG);
       token = strtok(NULL, "");
-      if(token!=NULL){
-        write(fd2,token,strlen(token));
-        bytesToRead-=strlen(token);
+      if (token != NULL)
+      {
+        write(fd2, token, strlen(token));
+        bytesToRead -= strlen(token);
       }
 
-      while(bytesToRead>0){
-        if ((bytesRead = read(fd, buffer, BUFFER_MAX-1)) == -1)
+      while (bytesToRead > 0)
+      {
+        if ((bytesRead = read(fd, buffer, BUFFER_MAX - 1)) == -1)
         {
           printf("error: %s\n", strerror(errno));
           close(fd);
           continue;
         }
-        buffer[bytesRead]='\0';
+        buffer[bytesRead] = '\0';
 
-        if (bytesRead<=bytesToRead ){
-          write(fd2,buffer,strlen(buffer));
-          bytesToRead-=bytesRead;
+        if (bytesRead <= bytesToRead)
+        {
+          write(fd2, buffer, strlen(buffer));
+          bytesToRead -= bytesRead;
         }
-        else if (buffer[bytesRead-1]=='\n'){
-          write(fd2,buffer,strlen(buffer-1));
-          bytesToRead-=bytesRead;
+        else if (buffer[bytesRead - 1] == '\n')
+        {
+          write(fd2, buffer, strlen(buffer - 1));
+          bytesToRead -= bytesRead;
         }
-        else{
+        else
+        {
           printf("request: Error reply not correctly formulated\n");
           close(fd2);
           close(fd);
