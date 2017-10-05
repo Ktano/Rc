@@ -1,4 +1,4 @@
-#include "commandlinereader.h"
+ #include "commandlinereader.h"
 #include "tcpcommandwriter.h"
 #include "fpt.h"
 #include <unistd.h>
@@ -43,7 +43,7 @@ int main(int argc, char **argv)
       strcpy(servername, argv[i + 1]);
       i++;
     }
-    else if (strcmp(argv[i], "-e"))
+    else if (strcmp(argv[i], "-e")==0)
     {
       udpPort = atoi(argv[i + 1]);
       i++;
@@ -54,7 +54,7 @@ int main(int argc, char **argv)
     }
   }
 
-  bytestoWrite=UDPCommand(UDPmessage,UDP_BUFFER_SIZE,"REG",PTC,MAX_PTC,udpPort);
+  bytestoWrite=UDPCommand(UDPmessage,UDP_BUFFER_SIZE,"REG",PTC,ptctasks,udpPort);
   bytesRead=sendUDP(servername,udpPort,UDPmessage,udpReply,UDP_BUFFER_SIZE);
 
 

@@ -17,8 +17,10 @@ folders:
 clear:
 	clear
 clean:
-	rm -f -d -r *.o user input_files output_files
+	rm -f -d -r *.o user input_files output_files WS
 zip:
 	zip ../proj_6.zip *.c *.h makefile
 testuser:
 	./user -n tejo.tecnico.ulisboa.pt -p 58011 < ../testfiles/testwar
+testws:
+	./WS WCT -n tejo.tecnico.ulisboa.pt -e 58011 -p 59000
