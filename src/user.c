@@ -21,7 +21,7 @@
 
 int main(int argc, char **argv)
 {
-  int port = DEFAULT_PORT, i, bytesRead, bytesToRead;
+  int port = DEFAULT_PORT, i, bytesRead, bytesToRead, numargs;
   int fd;  /*used for TCP comunication*/
   int fd2; /*used to write to file*/
   char servername[BUFFER_MAX], buffer[BUFFER_MAX];
@@ -44,13 +44,11 @@ int main(int argc, char **argv)
     if (strcmp(argv[i], "-n") == 0)
       strcpy(servername, argv[i + 1]);
   }
-  1
 
-      while (1)
+  while (1)
   {
     printf(">> ");
     /* read arguments from commandline*/
-    int numargs;
     numargs = readLineArguments(args, MAXARGS + 1, commandlinebuffer, BUFFER_MAX);
 
     /* if exit or no arguments received exit*/
