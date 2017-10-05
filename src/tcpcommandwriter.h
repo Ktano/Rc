@@ -11,10 +11,11 @@
 #define PROTOCOL_DIVIDER " \n"
 #define FPT_SIZE 3
 
-int tcpCommand(int tcpfd, char* maincommand, char* argument, char* file);
-int TCPconnect(char* servername, int port);
+int tcpCommand(int tcpfd, char *maincommand, char *argument, char *file);
+int TCPconnect(char *servername, int port);
 int TCPaccept();
 void UDPconnect();
+int UDPCommand(char* buffer,int bufferlen, char *maincommand, char **PTC,int lenghtPTC, int port);
+int sendUDP(char *servername,int UDPport,char *msg, char* reply,int size);
 
 #endif
-
