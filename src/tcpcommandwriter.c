@@ -100,31 +100,41 @@ int TCPconnect(char *servername, int port)
   return fd;
 }
 
-/*int TCPacceptint(int port)
+int TCPacceptint(int port)
 {
 
   int fd, newfd;
-  struct hostent *hostptr;
   struct sockaddr_in serveraddr, clientaddr;
   int clientlen;
 
-  fd = socket(AF_INET, SOCK_STREAM, 0);
+  if((fd = socket(AF_INET, SOCK_STREAM, 0))==-1)
+  {
+    printf("error: %s\n", strerror(errno));
+    return -1;
+  }
 
   memset((void *)&serveraddr, (int)'\0', sizeof(serveraddr));
   serveraddr.sin_family = AF_INET;
   serveraddr.sin_addr.s_addr = htonl(INADDR_ANY);
   serveraddr.sin_port = htons((u_short)port);
 
-  bind(fd, (struct sockaddr *)&serveraddr, sizeof(serveraddr));
+  if(bind(fd, (struct sockaddr *)&serveraddr, sizeof(serveraddr))==-1)
+  {
+    printf("error: %s\n", strerror(errno));
+    return -1;
+  }
 
-  listen(fd, 5);
+  if(listen(fd, 5)==-1){
+    printf("error: %s\n", strerror(errno));
+    return -1;
+  }
 
   clientlen = sizeof(clientaddr);
-  newfd = accept(fd, (struct sockaddr *)&clientaddr, &clientlen);
+  newfd = accept(fd, (struct sockaddr *)&clientaddr,(socklen_t *)&clientlen);
 
   close(fd);
   return newfd;
-}*/
+}
 
 /*void UDPconnect()
 {
@@ -227,12 +237,16 @@ int sendUDP(char *servername,int UDPport,char *msg, char* reply,int size){
   struct hostent *hostptr;
   struct sockaddr_in serveraddr;
 
-
-
   bytestoWrite=strlen(msg);
 
-  fd=socket(AF_INET,SOCK_DGRAM,0);
-  hostptr=gethostbyname(servername); 
+  if((fd=socket(AF_INET,SOCK_DGRAM,0))==-1){
+    printf("ERROR: %s",strerror(errno));
+    return -1;
+  } 
+  if((hostptr=gethostbyname(servername))==NULL){
+    printf("ERROR: %s",strerror(errno));
+    return -1;
+  } 
   memset((void*)&serveraddr,(int)'\0',sizeof(serveraddr));
   serveraddr.sin_family = AF_INET;
   serveraddr.sin_addr.s_addr = ((struct in_addr *)(hostptr->h_addr_list[0]))->s_addr;

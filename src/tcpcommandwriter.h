@@ -13,7 +13,7 @@
 
 int tcpCommand(int tcpfd, char *maincommand, char *argument, char *file);
 int TCPconnect(char *servername, int port);
-int TCPaccept();
+int TCPacceptint(int port);
 void UDPconnect();
 int UDPCommand(char* buffer,int bufferlen, char *maincommand, char **PTC,int lenghtPTC, int port);
 int sendUDP(char *servername,int UDPport,char *msg, char* reply,int size);
