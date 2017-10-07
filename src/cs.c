@@ -41,10 +41,12 @@ int main (int argc, char** argv){
         strcat(filename, filecounter);
         filecounter++;
         strcat(filename, ".txt");
-        
+
         fp = fopen(filename, "wb");
 
         read( fd, filename, bytesToRead);
+
+        filesplitter(filename);
       }
     }
 

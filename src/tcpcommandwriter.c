@@ -119,8 +119,8 @@ int TCPacceptint(int port){
 
 int UDPconnect(int port){
 
-    int fd, sourcefile;
-
+    int fd, sourcefile, wsport;
+    char* ipString;
     struct sockaddr_in serveraddr, clientaddr;
     socklen_t addrlen;
     char buffer[80], WScommand[4], writeonfile[50];
@@ -144,7 +144,13 @@ int UDPconnect(int port){
     addrlen = sizeof(clientaddr);
     recConnect = recvfrom(fd, buffer, sizeof(buffer), 0, (struct sockaddr*)&clientaddr, &addrlen);
 
-    read(fd, WScommand, 4);
+    ipString = inet_ntoa(clientaddr.sin_addr);
+    wsport = ntohs(clientaddr.sin_port);
+
+    TCPconnect(ipString, wsport):
+
+    read(buffer, WScommand, 4);
+
     if(strcmp(WScommand, "REG ")==0){
       if((recConnect == -1) && (sourcefile == -1)){
         sendto(fd, "RAK NOK\n", 9, 0, (struct sockaddr*)&clientaddr,addrlen);
@@ -156,4 +162,44 @@ int UDPconnect(int port){
       }
     }
     return 0;
+}
+
+int filespliter(char *file) {
+
+	FILE *sourcefile;
+	FILE *partitionfile;
+
+	char line[128], partition[9];
+	int files=1, counter=1;
+	int wctservers = 2;
+	int ch=0, lines=1;
+
+	sourcefile = fopen(file,"r");
+
+
+	while(!feof(sourcefile)){
+	  ch = fgetc(sourcefile);
+	  if(ch == '\n')
+	    lines++;
+	}
+	rewind(sourcefile);
+
+	printf("LINES: %d\n", lines);
+
+	sprintf(partition, "%s00%d.txt", sourcefile, files);
+	partitionfile = fopen(partition, "w");
+
+	while (fgets(line, sizeof line, sourcefile)!=NULL) {
+		if ((lines % counter) == wctservers) {
+			fclose(partitionfile);
+			counter = 1;
+			files++;
+			sprintf(partition, "%s00%d.txt", sourcefile, files);
+			partitionfile = fopen(partition, "w");
+		}
+		counter++;
+		fprintf(partitionfile,"%s\n", line);
+	}
+	fclose(sourcefile);
+	return 0;
 }
