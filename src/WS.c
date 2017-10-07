@@ -28,7 +28,6 @@ int readTCP(int fd);
 int main(int argc, char **argv)
 {
   int i = 0, ptctasks = 0, j = 0, pid;
-  int bytestoWrite, bytesRead;
   int tcpfd;
   char *PTC[MAX_PTC];
 
