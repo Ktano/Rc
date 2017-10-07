@@ -11,6 +11,7 @@
 #include <fcntl.h>
 #include <signal.h>
 #include <sys/wait.h>
+#include <ctype.h>
 
 #define DEFAULT_UDP_PORT 58006
 #define DEFAULT_TCP_PORT 59000
@@ -22,6 +23,7 @@ int processes, udpPort, tcpPort;
 char UDPmessage[UDP_BUFFER_SIZE], servername[BUFFER_MAX], udpReply[UDP_BUFFER_SIZE];
 
 void apanhaSIG();
+int readTCP(int fd);
 
 int main(int argc, char **argv)
 {
@@ -89,8 +91,9 @@ int main(int argc, char **argv)
     }
     else if (pid == 0)
     {
+      readTCP(tcpfd);
       /*child*/
-
+      close(tcpfd);
       exit(EXIT_SUCCESS);
     }
     else
@@ -132,4 +135,135 @@ void apanhaSIG()
     }
   }
   exit(EXIT_SUCCESS);
+}
+
+int readTCP(int fd)
+{
+  char buffer[BUFFER_MAX];
+  int bytesRead, bytesToRead;
+  int fd2;
+  char ptc[BUFFER_MAX], filename[BUFFER_MAX], *token;
+
+  if ((bytesRead = read(fd, buffer, BUFFER_MAX - 1)) == -1)
+  {
+    printf("error: %s\n", strerror(errno));
+    return -1;
+  }
+  buffer[bytesRead] = '\0';
+
+  token = strtok(buffer, PROTOCOL_DIVIDER);
+  if (strcmp(token, TCP_COMMAND_WORKREQUEST) != 0)
+  {
+    printf("request:Unexpected request Received\n");
+    tcpCommand(fd, TCP_COMMAND_WORKREQUEST, TCP_ARG_ERR, NULL);
+    return -1;
+  }
+
+  token = strtok(NULL, PROTOCOL_DIVIDER);
+  strcpy(ptc, token);
+
+  token = strtok(NULL, PROTOCOL_DIVIDER);
+  strcpy(filename, token);
+
+  /* creates the file with the name provided*/
+  if ((fd2 = open(filename, O_CREAT | O_WRONLY, S_IRWXU | S_IRWXG)) == -1)
+  {
+    printf("ERROR: %s\n", strerror(errno));
+    tcpCommand(fd, TCP_COMMAND_WORKREQUEST, TCP_ARG_ERR, NULL);
+    return -1;
+  }
+
+  /* saves any extra data to the file*/
+  token = strtok(NULL, PROTOCOL_DIVIDER);
+  if ((bytesToRead = atoi(token)) == 0)
+  {
+    printf("ERROR: Unexpected request Received");
+    return -1;
+  }
+
+  token = strtok(NULL, "");
+  if (token != NULL)
+  {
+    write(fd2, token, strlen(token));
+    bytesToRead -= strlen(token);
+  }
+
+  /* reads and saves file*/
+  while (bytesToRead > 0)
+  {
+    if ((bytesRead = read(fd, buffer, BUFFER_MAX - 1)) == -1)
+    {
+      printf("error: %s\n", strerror(errno));
+      close(fd2);
+      return -1;
+    }
+    buffer[bytesRead] = '\0';
+
+    if (bytesRead <= bytesToRead)
+    {
+      write(fd2, buffer, strlen(buffer));
+      bytesToRead -= bytesRead;
+    }
+    else if (buffer[bytesRead - 1] == '\n')
+    {
+      write(fd2, buffer, strlen(buffer - 1));
+      bytesToRead -= bytesRead;
+    }
+    else
+    {
+      printf("request: Error reply not correctly formulated\n");
+      close(fd2);
+      return -1;
+    }
+  }
+  close(fd2);
+
+  /* WORD COUNT */
+  if (strcmp(ptc, PTC_WORDCOUNT) == 0)
+  {
+    int wordCount;
+    FILE *tfd;
+    if ((wordCount = fileWordCount(filename)) == -1)
+    {
+      tcpCommand(fd, TCP_COMMAND_WORKREQUEST, TCP_ARG_ERR, NULL);
+      return -1;
+    }
+    tfd = fopen("tmp", "w");
+    fprintf(tfd, "%d", wordCount);
+    fclose(tfd);
+  }
+  /* Longest Word */
+  else if (strcmp(ptc, PTC_LONGESTWORD) == 0)
+  {
+    char answer[BUFFER_MAX];
+    FILE *tfd;
+    if (fileLongestWord(filename, answer, BUFFER_MAX) == -1)
+    {
+      tcpCommand(fd, TCP_COMMAND_WORKREQUEST, TCP_ARG_ERR, NULL);
+      return -1;
+    }
+
+    tfd = fopen("tmp", "w");
+    fprintf(tfd, "%s", answer);
+    fclose(tfd);
+  }
+  /*chage all chars*/
+  else if (strcmp(ptc, PTC_UPPER) == 0 || strcmp(ptc, PTC_LOWER) == 0)
+  {
+    if (changeAllChars(filename, "tmp", strcmp(ptc, PTC_UPPER) == 0 ? toupper : tolower) == -1)
+    {
+      tcpCommand(fd, TCP_COMMAND_WORKREQUEST, TCP_ARG_ERR, NULL);
+      return -1;
+    }
+  }
+  else
+  {
+    tcpCommand(fd, TCP_COMMAND_WORKREQUEST, TCP_ARG_EOF, NULL);
+    return -1;
+  }
+
+  /* final reply and delete data*/
+  tcpCommand(fd, TCP_COMMAND_REPLY, TCP_REPLY_REPORT, "tmp");
+  remove("tmp");
+  return 0;
 }

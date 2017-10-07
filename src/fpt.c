@@ -128,7 +128,7 @@ int agregateLongestWord(char **words, int length, char *buffer, char buffersize)
  * and a function point on what to do with each char
  **/
 
-int changeAllChars(char *fileorg, char *filedst, char (*f)(char))
+int changeAllChars(char *fileorg, char *filedst, int (*f)(int))
 {
   int total = 0;
 
