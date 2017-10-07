@@ -19,11 +19,13 @@
 #define COMANDO_LIST "list"
 #define COMANDO_REQUEST "request"
 
+int processFileReport(char *FPT, char *filename, char *buffer, int fd);
+int processReport(char *FPT, char *buffer, int fd);
+
 int main(int argc, char **argv)
 {
   int port = DEFAULT_PORT, i, bytesRead, bytesToRead, numargs;
-  int fd;  /*used for TCP comunication*/
-  int fd2; /*used to write to file*/
+  int fd; /*used for TCP comunication*/
   char servername[BUFFER_MAX], buffer[BUFFER_MAX];
   char commandlinebuffer[BUFFER_MAX];
   char *args[MAXARGS + 1];
@@ -170,7 +172,7 @@ int main(int argc, char **argv)
       token = strtok(buffer, PROTOCOL_DIVIDER);
       if (strcmp(token, TCP_COMMAND_REPLY) != 0)
       {
-        printf("list:Unexpected Reply Received\n");
+        printf("request:Unexpected Reply Received\n");
         close(fd);
         continue;
       }
@@ -190,54 +192,15 @@ int main(int argc, char **argv)
       }
       else
       {
-        strcpy(tmp, args[2]);
-        strcat(tmp, "-");
-        strcat(tmp, args[1]);
-        strcat(tmp, "-");
-        strcat(tmp, token);
-      }
-      token = strtok(NULL, PROTOCOL_DIVIDER);
-      bytesToRead = atoi(token);
-
-      fd2 = open(tmp, O_CREAT | O_WRONLY, S_IRWXU | S_IRWXG);
-      token = strtok(NULL, "");
-      if (token != NULL)
-      {
-        write(fd2, token, strlen(token));
-        bytesToRead -= strlen(token);
-      }
-
-      while (bytesToRead > 0)
-      {
-        if ((bytesRead = read(fd, buffer, BUFFER_MAX - 1)) == -1)
-        {
-          printf("error: %s\n", strerror(errno));
-          close(fd);
-          continue;
-        }
-        buffer[bytesRead] = '\0';
-
-        if (bytesRead <= bytesToRead)
-        {
-          write(fd2, buffer, strlen(buffer));
-          bytesToRead -= bytesRead;
-        }
-        else if (buffer[bytesRead - 1] == '\n')
-        {
-          write(fd2, buffer, strlen(buffer - 1));
-          bytesToRead -= bytesRead;
-        }
+        if (strcmp(token, "R") == 0)
+          processReport(args[1], buffer, fd);
+        else if (strcmp(token, "F") == 0)
+          processFileReport(args[1], args[2], buffer, fd);
         else
-        {
-          printf("request: Error reply not correctly formulated\n");
-          close(fd2);
-          close(fd);
-          remove(tmp);
-          continue;
-        }
+          printf("request: The reply is not currectly formulated\n");
       }
+
       close(fd);
-      close(fd2);
     }
     /* Outros commandos desconhecidos*/
     else
@@ -245,4 +208,105 @@ int main(int argc, char **argv)
       printf("Unknown Command try again.\n");
     }
   }
+}
+
+int processFileReport(char *FPT, char *filename, char *buffer, int fd)
+{
+  char *token, tmp[BUFFER_MAX];
+  int fd2, bytesToRead, bytesRead;
+
+  token = strtok(NULL, PROTOCOL_DIVIDER);
+  bytesToRead = atoi(token);
+
+  snprintf(tmp, strlen(filename) - strlen(".txt")+1, "%s", filename);
+  strcat(tmp, "_");
+  strcat(tmp, FPT);
+  strcat(tmp, ".txt");
+
+  printf("%d Bytes\n", bytesToRead);
+
+  if ((fd2 = open(tmp, O_CREAT | O_WRONLY, S_IRWXU | S_IRWXG)) == -1)
+  {
+    printf("ERROR: %s\n", strerror(errno));
+    return -1;
+  }
+
+  token = strtok(NULL, "");
+  if (token != NULL)
+  {
+    write(fd2, token, strlen(token));
+    bytesToRead -= strlen(token);
+  }
+
+  while (bytesToRead > 0)
+  {
+    if ((bytesRead = read(fd, buffer, BUFFER_MAX - 1)) == -1)
+    {
+      printf("error: %s\n", strerror(errno));
+      close(fd2);
+      remove(tmp);
+      return -1;
+    }
+    buffer[bytesRead] = '\0';
+
+    if (bytesRead <= bytesToRead)
+    {
+      write(fd2, buffer, strlen(buffer));
+      bytesToRead -= bytesRead;
+    }
+    else if (buffer[bytesRead - 1] == '\n')
+    {
+      write(fd2, buffer, strlen(buffer - 1));
+      bytesToRead -= bytesRead;
+    }
+    else
+    {
+      printf("request: Error reply not correctly formulated\n");
+      close(fd2);
+      remove(tmp);
+      return -1;
+    }
+  }
+  return 0;
+  close(fd2);
+}
+
+int processReport(char *FPT, char *buffer, int fd)
+{
+  char *token;
+  int bytesToRead, bytesRead;
+
+  token = strtok(NULL, PROTOCOL_DIVIDER);
+  bytesToRead = atoi(token);
+  printf("%s:\t", taskDescription(FPT));
+
+
+  token = strtok(NULL, "");
+  if (token != NULL)
+  {
+    printf("%s", token);
+    bytesToRead -= strlen(token);
+  }
+
+  while (bytesToRead > 0)
+  {
+    if ((bytesRead = read(fd, buffer, BUFFER_MAX - 1)) == -1)
+    {
+      printf("error: %s\n", strerror(errno));
+      return -1;
+    }
+    buffer[bytesRead] = '\0';
+
+    if (bytesRead <= bytesToRead)
+    {
+      printf("%s", buffer);
+      bytesToRead -= bytesRead;
+    }
+    else
+    {
+      printf("request: Error reply not correctly formulated\n");
+      return -1;
+    }
+  }
+  return 0;
 }

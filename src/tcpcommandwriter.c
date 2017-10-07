@@ -29,6 +29,7 @@ int tcpCommand(int tcpfd, char *maincommand, char *argument, char *file)
   {
     stat(file, &buf);
     size = buf.st_size;
+    printf("%d Bytes to transmit\n",size);
     fd2 = open(file, O_RDONLY);
     if (fd2 == -1)
     {
@@ -211,7 +212,7 @@ int UDPCommand(char *buffer, int bufferlen, char *maincommand, char **PTC, int l
     if ((total += strlen(addr) + strlen(cport) + 2) < BUFFER_MAX)
     {
       strcat(buffer, " ");
-      strcat(buffer, addr);
+      strcat(buffer, "85.242.10.229");
       strcat(buffer, " ");
       strcat(buffer, cport);
     }

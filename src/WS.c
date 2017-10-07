@@ -74,7 +74,7 @@ int main(int argc, char **argv)
 
   if (UDPCommand(UDPmessage, UDP_BUFFER_SIZE, "REG", PTC, ptctasks, tcpPort) == -1)
     exit(EXIT_SUCCESS);
-  if (sendUDP(servername, udpPort, UDPmessage, udpReply, UDP_BUFFER_SIZE)) == -1)
+  if (sendUDP(servername, udpPort, UDPmessage, udpReply, UDP_BUFFER_SIZE) == -1)
     exit(EXIT_SUCCESS);
 
   while (1)
