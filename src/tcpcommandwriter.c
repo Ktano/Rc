@@ -212,7 +212,7 @@ int UDPCommand(char *buffer, int bufferlen, char *maincommand, char **PTC, int l
     if ((total += strlen(addr) + strlen(cport) + 2) < BUFFER_MAX)
     {
       strcat(buffer, " ");
-      strcat(buffer, "85.242.10.229");
+      strcat(buffer, addr);
       strcat(buffer, " ");
       strcat(buffer, cport);
     }
@@ -224,7 +224,7 @@ int UDPCommand(char *buffer, int bufferlen, char *maincommand, char **PTC, int l
   }
 
   if ((total += 2) < BUFFER_MAX)
-    strcat(buffer, "/n");
+    strcat(buffer, "\n");
   else
   {
     printf("ERROR: buffer size is too small");
