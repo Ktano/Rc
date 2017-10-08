@@ -17,5 +17,10 @@
 #define DSC_LOWER "Convert text to lower case"
 
 char* taskDescription(char* PTC);
+int fileWordCount(char *filename);
+int agregateWordCount(int *results, int length);
+int fileLongestWord(char *filename,char *buffer, int buffersize);
+int agregateLongestWord(char **words,int lenght,char *buffer, char buffersize);
+int changeAllChars(char *fileorg, char *filedst, int (*f)(int));
 
 #endif
