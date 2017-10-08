@@ -18,4 +18,4 @@ clean:
 zip:
 	zip ../proj_6.zip *.c *.h makefile
 testuser:
-	./user -n tejo.ist.utl.pt -p 58011
+	./user -n tejo.tecnico.ulisboa.pt -p 58011 < ../testfiles/testwar

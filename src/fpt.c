@@ -1,7 +1,7 @@
 #include "fpt.h"
 #include "string.h"
 
-char* taskDescription(char* PTC)
+char *taskDescription(char *PTC)
 {
     if (strcmp(PTC, PTC_WORDCOUNT) == 0)
         return DSC_WORDCOUNT;
@@ -13,5 +13,3 @@ char* taskDescription(char* PTC)
         return DSC_LOWER;
     return "";
 }
-
-
