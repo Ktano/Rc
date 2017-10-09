@@ -26,8 +26,27 @@ int main (int argc, char** argv){
     int filecounter = 1, fileBytes;
     char *token;
     FILE *fp;
-    char filename = "0000", response;
+    char filename = "0000" /*usa o PID depois do Fork to TCP connect*/, response;
 
+    /* antes de qualquer while é preciso fazer um fork
+    se for parent faz UDPconnect(PORT) e escreve no ficheiro quando recebe um WSs REG (atenção que isto precisa de Mutex ou algo do genero partilhado)
+    se for child é que faz o TCPaccept
+    Depois do TCPaccept fazes logo outro fork
+    se for o parent volta para o TCPaccept
+    
+    se for o child recebe os request (LST ou REQ)
+     se for LST lê o ficheiro para ver as FPT disponiveis e envia para o user
+     
+     se for REQ lê a FPT pedida
+        guarda o ficheiro enviado pelo user com o nome PID.TXT
+        lê o ficheiro com os WSs para ver quantos e quais os WSs que processam a FPT
+        divide o ficheiro PID00n.TXT
+        envia cada parte para um dos FPTs
+        espera a resposta de cada um dos FPTs
+        agrega a resposta dos FPTs
+        responde ao user com a resposta agregada
+    */
+    
     while (1)
     {
 
