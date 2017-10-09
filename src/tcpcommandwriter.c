@@ -3,7 +3,7 @@
 // to send through TCP
 //
 */
-
+#include "tcpcommandwriter.h"
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <unistd.h>
@@ -15,7 +15,9 @@
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <netdb.h>
+#include <arpa/inet.h>
 
+#define BUFFER_MAX 128
 
 int tcpCommand(int tcpfd, char* maincommand, char* argument, char* file)
 {
@@ -42,8 +44,8 @@ int tcpCommand(int tcpfd, char* maincommand, char* argument, char* file)
     }
     else if ( file==NULL ){
         snprintf(buffer,strlen(maincommand)+strlen(argument)+3, "%s %s\n", maincommand, argument);
-    	write(tcpfd, buffer, strlen(buffer));
-    	return 0;
+    	   write(tcpfd, buffer, strlen(buffer));
+    	   return 0;
     }
     else{
         sprintf(buffer/*,strlen(maincommand)+strlen(argument)+4*/, "%s %s %d ", maincommand, argument, size);
@@ -119,12 +121,12 @@ int TCPacceptint(int port){
 
 int UDPconnect(int port){
 
-    int fd, sourcefile, wsport;
-    char* ipString;
+    int fd, sourcefile, bytesRead;
+    char *token;
     struct sockaddr_in serveraddr, clientaddr;
     socklen_t addrlen;
-    char buffer[80], WScommand[4], writeonfile[50];
-    int recConnect;
+    char buffer[5000], writeonfile[50];
+
     sourcefile = open("file_processing_tasks.txt",O_WRONLY);
     if (sourcefile == -1)
     {
@@ -142,36 +144,137 @@ int UDPconnect(int port){
     bind(fd,(struct sockaddr*)&serveraddr,sizeof(serveraddr));
 
     addrlen = sizeof(clientaddr);
-    recConnect = recvfrom(fd, buffer, sizeof(buffer), 0, (struct sockaddr*)&clientaddr, &addrlen);
 
-    ipString = inet_ntoa(clientaddr.sin_addr);
-    wsport = ntohs(clientaddr.sin_port);
+    bytesRead = 0;
+    bytesRead = recvfrom(fd, buffer, sizeof(buffer), 0, (struct sockaddr*)&clientaddr, &addrlen);
 
-    TCPconnect(ipString, wsport):
+    buffer[bytesRead]='\0';
 
-    read(buffer, WScommand, 4);
+    token = strtok(buffer, PROTOCOL_DIVIDER);
 
-    if(strcmp(WScommand, "REG ")==0){
-      if((recConnect == -1) && (sourcefile == -1)){
-        sendto(fd, "RAK NOK\n", 9, 0, (struct sockaddr*)&clientaddr,addrlen);
+    if(strcmp(token, "REG")==0){
+      if(bytesRead == -1){
+        sendto(fd, "RAK ERR\n", 9, 0, (struct sockaddr*)&clientaddr,addrlen);
       }else{
+        token = strtok(buffer, "");
         strcat(writeonfile, "+ ");
-        strcat(writeonfile, buffer);
-        if(write( sourcefile, writeonfile, strlen(writeonfile)))
+        strcat(writeonfile, token);
+        strcat(writeonfile, "\n");
+        if(write( sourcefile, writeonfile, strlen(writeonfile))!=-1)
           sendto(fd, "RAK OK\n", 8, 0, (struct sockaddr*)&clientaddr,addrlen);
+        else
+          sendto(fd, "RAK NOK\n", 9, 0, (struct sockaddr*)&clientaddr,addrlen);
       }
-    }
+    }/*else if (strcmp(token, "UNR")==0){
+
+    }*/
     return 0;
 }
 
-int filespliter(char *file) {
+int UDPCommand(char *buffer, int bufferlen, char *maincommand, char **PTC, int lenghtPTC, int port)
+{
+  int total = 0, i;
+  struct hostent *h;
+  struct in_addr *a;
+  char servername[BUFFER_MAX], *addr, cport[BUFFER_MAX];
+
+  strncpy(buffer, maincommand, BUFFER_MAX);
+  total = strlen(buffer);
+  if (PTC != NULL)
+  {
+    for (i = 0; i < lenghtPTC; i++)
+    {
+      if ((total += strlen(PTC[i]) + 1) < BUFFER_MAX)
+      {
+        strcat(buffer, " ");
+        strcat(buffer, PTC[i]);
+      }
+      else
+      {
+        printf("ERROR: buffer size is too small");
+        return -1;
+      }
+    }
+  }
+
+  if (port != 0)
+  {
+    if (gethostname(servername, BUFFER_MAX) == -1)
+    {
+      printf("error getting local host name: %s\n", strerror(errno));
+      return -1;
+    }
+    if ((h = gethostbyname(servername)) == NULL)
+    {
+      printf("error getting host: %s\n", strerror(errno));
+      return -1;
+    }
+
+    a = (struct in_addr *)h->h_addr_list[0];
+    addr = inet_ntoa(*a);
+    sprintf(cport,"%d",port);
+    if ((total += strlen(addr) + strlen(cport) + 2) < BUFFER_MAX)
+    {
+      strcat(buffer, " ");
+      strcat(buffer, addr);
+      strcat(buffer, " ");
+      strcat(buffer, cport);
+    }
+    else
+    {
+      printf("ERROR: buffer size is too small");
+      return -1;
+    }
+  }
+
+  if ((total += 2) < BUFFER_MAX)
+    strcat(buffer, "\n");
+  else
+  {
+    printf("ERROR: buffer size is too small");
+    return -1;
+  }
+  return total;
+}
+
+int sendUDP(char *servername,int UDPport,char *msg, char* reply,int size){
+  int bytestoWrite, fd,addrlen,n;
+  struct hostent *hostptr;
+  struct sockaddr_in serveraddr;
+
+  bytestoWrite=strlen(msg);
+
+  if((fd=socket(AF_INET,SOCK_DGRAM,0))==-1){
+    printf("ERROR: %s",strerror(errno));
+    return -1;
+  }
+  if((hostptr=gethostbyname(servername))==NULL){
+    printf("ERROR: %s",strerror(errno));
+    return -1;
+  }
+  memset((void*)&serveraddr,(int)'\0',sizeof(serveraddr));
+  serveraddr.sin_family = AF_INET;
+  serveraddr.sin_addr.s_addr = ((struct in_addr *)(hostptr->h_addr_list[0]))->s_addr;
+  serveraddr.sin_port = htons((u_short)UDPport);
+  addrlen = sizeof(serveraddr);
+
+  sendto(fd,msg,bytestoWrite,0,(struct sockaddr*)&serveraddr,(socklen_t)addrlen);
+
+  addrlen=sizeof(serveraddr);
+  n=recvfrom(fd,reply,size,0,(struct sockaddr*)&serveraddr,(socklen_t*)&addrlen);
+  reply[n]='\0';
+  close(fd);
+  return n;
+}
+
+int filespliter(char *file, int servers) {
 
 	FILE *sourcefile;
 	FILE *partitionfile;
 
 	char line[128], partition[9];
 	int files=1, counter=1;
-	int wctservers = 2;
+
 	int ch=0, lines=1;
 
 	sourcefile = fopen(file,"r");
@@ -186,15 +289,15 @@ int filespliter(char *file) {
 
 	printf("LINES: %d\n", lines);
 
-	sprintf(partition, "%s00%d.txt", sourcefile, files);
+	sprintf(partition, "%s00%d.txt", file, files);
 	partitionfile = fopen(partition, "w");
 
 	while (fgets(line, sizeof line, sourcefile)!=NULL) {
-		if ((lines % counter) == wctservers) {
+		if ((lines % counter) == servers) {
 			fclose(partitionfile);
 			counter = 1;
 			files++;
-			sprintf(partition, "%s00%d.txt", sourcefile, files);
+			sprintf(partition, "%s00%d.txt", file, files);
 			partitionfile = fopen(partition, "w");
 		}
 		counter++;
@@ -202,4 +305,41 @@ int filespliter(char *file) {
 	}
 	fclose(sourcefile);
 	return 0;
+}
+
+int FTPcounter(char* filename, char* ftp){
+
+    FILE *fp;
+
+    int wordcounter = 0, ch, ftplen;
+
+    ftplen = strlen(ftp);
+
+    if( NULL == (fp = fopen( filename, "r"))){
+        return -1;
+    }
+    for(;;){
+
+        int i;
+
+        if( EOF == ( ch = fgetc(fp))){
+          break;
+        }if((char) ch != *ftp){
+          continue;
+        }
+        for( i = 1; i < ftplen; ++i){
+            if(EOF==(ch = fgetc(fp))){
+               goto end;
+            }if((char) ch != ftp[i]){
+                fseek( fp, 1-i, SEEK_CUR);
+                goto next;
+            }
+        }
+        ++wordcounter;
+        next: ;
+    }
+end:
+    fclose(fp);
+    return wordcounter;
+
 }
