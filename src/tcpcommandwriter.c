@@ -125,7 +125,7 @@ int UDPconnect(int port){
     char *token;
     struct sockaddr_in serveraddr, clientaddr;
     socklen_t addrlen;
-    char buffer[5000], writeonfile[50];
+    char buffer[5000], writeonfile[50], writeonscreen[50];
 
     sourcefile = open("file_processing_tasks.txt",O_WRONLY);
     if (sourcefile == -1)
@@ -156,11 +156,14 @@ int UDPconnect(int port){
       if(bytesRead == -1){
         sendto(fd, "RAK ERR\n", 9, 0, (struct sockaddr*)&clientaddr,addrlen);
       }else{
+
         token = strtok(buffer, "");
-        strcat(writeonfile, "+ ");
-        strcat(writeonfile, token);
-        strcat(writeonfile, "\n");
+        strcat(writeonscreen, "+ ");
+        strcat(writeonscreen, token);
+        strcat(writeonscreen, '\0');
+
         if(write( sourcefile, writeonfile, strlen(writeonfile))!=-1)
+          printf("%s\n", writeonscreen);
           sendto(fd, "RAK OK\n", 8, 0, (struct sockaddr*)&clientaddr,addrlen);
         else
           sendto(fd, "RAK NOK\n", 9, 0, (struct sockaddr*)&clientaddr,addrlen);
@@ -267,7 +270,7 @@ int sendUDP(char *servername,int UDPport,char *msg, char* reply,int size){
   return n;
 }
 
-int filespliter(char *file, int servers) {
+int filesplitter(char *file, int servers, int filecounter) {
 
 	FILE *sourcefile;
 	FILE *partitionfile;
@@ -289,7 +292,7 @@ int filespliter(char *file, int servers) {
 
 	printf("LINES: %d\n", lines);
 
-	sprintf(partition, "%s00%d.txt", file, files);
+  sprintf(partition, "%d%02d.txt", filecounter, files);
 	partitionfile = fopen(partition, "w");
 
 	while (fgets(line, sizeof line, sourcefile)!=NULL) {
@@ -297,7 +300,7 @@ int filespliter(char *file, int servers) {
 			fclose(partitionfile);
 			counter = 1;
 			files++;
-			sprintf(partition, "%s00%d.txt", file, files);
+			sprintf(partition, "%d%02d.txt", filecounter, files);
 			partitionfile = fopen(partition, "w");
 		}
 		counter++;
@@ -306,6 +309,8 @@ int filespliter(char *file, int servers) {
 	fclose(sourcefile);
 	return 0;
 }
+
+
 
 int FTPcounter(char* filename, char* ftp){
 
@@ -342,4 +347,42 @@ end:
     fclose(fp);
     return wordcounter;
 
+}
+
+int* connectToWS( filename, requestedFPT)
+{
+    FILE * fp;
+    char * line = NULL;
+    size_t len = 0;
+    ssize_t read;
+    char *token, ip[15];
+    char search_FTP[5];
+    search_FTP[0] = "+";
+    int fd_wsservers[10], fd_position = 0;
+
+    strcat(search_FTP, requestedFPT);
+    search_FTP[4] = '\0';
+
+    fp = fopen(filename, "r");
+
+    if (fp == NULL)
+        exit(EXIT_FAILURE);
+
+    while ((read = getline(&line, &len, fp)) != -1) {
+
+        token = strtok(line, PROTOCOL_DIVIDER)
+
+        if(strcmp(token, search_FTP)==0){
+
+          ip = strtok(NULL,PROTOCOL_DIVIDER);
+          port = atoi(strtok(NULL, PROTOCOL_DIVIDER));
+
+          fd_wsservers[fdposition] = TCPconnect(ip,port);
+          fd_position++;
+
+        }
+    }
+
+    fclose(fp);
+    return fd_wsservers;
 }
