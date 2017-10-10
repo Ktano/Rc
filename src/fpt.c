@@ -6,7 +6,7 @@
 #include <ctype.h>
 #include <errno.h>
 
-#define WORD_SEPARATOR " \t ,.-\n\r"
+#define BUFFER_MAX 1024
 
 char *taskDescription(char *PTC)
 {
@@ -70,7 +70,7 @@ int fileLongestWord(char *filename, char *buffer, int buffersize)
 {
   int maxtotal = 0, currentTotal = 0;
   FILE *fd;
-  char currentLongest[buffersize], c;
+  char currentLongest[BUFFER_MAX], c;
   if ((fd = fopen(filename, "r")) == NULL)
   {
     printf("ERROR: %s", strerror(errno));
