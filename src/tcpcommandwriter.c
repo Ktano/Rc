@@ -325,6 +325,8 @@ int filesplitter(char *file, int servers, int filecounter)
   return 0;
 }
 
+
+/* Counts the number of servers that can process the ftp task*/
 int FTPcounter(char *filename, char *ftp)
 {
   FILE *fp;
