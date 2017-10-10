@@ -328,40 +328,37 @@ int filesplitter(char *file, int servers, int filecounter)
 int FTPcounter(char *filename, char *ftp)
 {
   FILE *fp;
-  int wordcounter = 0, ch, ftplen;
+  int counter = 0, ch, ftplen;
+  int i, same;
 
   ftplen = strlen(ftp);
 
   if (NULL == (fp = fopen(filename, "r")))
     return -1;
 
-  for (;;)
+  while (EOF != (ch = fgetc(fp)))
   {
-    int i;
-    if (EOF == (ch = fgetc(fp)))
-      break;
-
-    if ((char)ch != *ftp)
-      continue;
-
-    for (i = 1; i < ftplen; ++i)
+    if (ch == '+')
     {
-      if (EOF == (ch = fgetc(fp)))
+      same = 1;
+      for (i = 0; i < ftplen; i++)
       {
-        goto end;
-      }
-      if ((char)ch != ftp[i])
-      {
-        fseek(fp, 1 - i, SEEK_CUR);
-        goto next;
+        ch = fgetc(fp);
+        if (ch != ftp[i])
+        {
+          same = 0;
+          break;
+        }
       }
     }
-    ++wordcounter;
-  next:;
+    if (same == 1)
+    {
+      counter++;
+    }
   }
-end:
+
   fclose(fp);
-  return wordcounter;
+  return counter;
 }
 
 int connectToWS(char *filename, char *requestedFPT, int *fd_wsservers, int max_servers)
@@ -390,14 +387,14 @@ int connectToWS(char *filename, char *requestedFPT, int *fd_wsservers, int max_s
     if (strcmp(token, search_FTP) == 0)
     {
       token = strtok(NULL, PROTOCOL_DIVIDER);
-      strcpy(ip,token);
+      strcpy(ip, token);
       token = strtok(NULL, PROTOCOL_DIVIDER);
-      port =atoi(token);
+      port = atoi(token);
       fd_wsservers[fd_position] = TCPconnect(ip, port);
       fd_position++;
     }
   }
 
   fclose(fp);
-  return fd_position+1;
+  return fd_position + 1;
 }
