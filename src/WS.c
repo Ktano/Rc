@@ -29,7 +29,7 @@ int csReply(char* reply);
 int main(int argc, char **argv)
 {
   int i = 0, ptctasks = 0, pid;
-  int tcpfd;
+  int listenfd, connfd;
   char *PTC[MAX_PTC];
 
   udpPort = DEFAULT_UDP_PORT;
@@ -91,7 +91,7 @@ int main(int argc, char **argv)
 
   while (1)
   {
-    if ((tcpfd = TCPacceptint(tcpPort)) == -1)
+    if ((connfd = TCPacceptint(listenfd,tcpPort)) == -1)
       continue;
 
     if ((pid = fork()) == -1)
@@ -101,14 +101,16 @@ int main(int argc, char **argv)
     }
     else if (pid == 0)
     {
-      readTCP(tcpfd);
+      close(listenfd);
+      readTCP(connfd);
       /*child*/
-      close(tcpfd);
+      close(connfd);
       exit(EXIT_SUCCESS);
     }
     else
     {
       processes++;
+      close(connfd);
       continue;
     }
   }

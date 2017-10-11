@@ -101,10 +101,10 @@ int TCPconnect(char *servername, int port)
   return fd;
 }
 
-int TCPacceptint(int port)
+int TCPacceptint(int fd, int port)
 {
 
-  int fd, newfd;
+  int  newfd;
 
   struct sockaddr_in serveraddr, clientaddr;
   socklen_t clientlen;
@@ -123,7 +123,6 @@ int TCPacceptint(int port)
   clientlen = sizeof(clientaddr);
   newfd = accept(fd, (struct sockaddr *)&clientaddr, &clientlen);
 
-  close(fd);
   return newfd;
 }
 
