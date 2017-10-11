@@ -24,10 +24,11 @@ char UDPmessage[UDP_BUFFER_SIZE], servername[BUFFER_MAX], udpReply[UDP_BUFFER_SI
 
 void apanhaSIG();
 int readTCP(int fd);
+int csReply(char* reply);
 
 int main(int argc, char **argv)
 {
-  int i = 0, ptctasks = 0, j = 0, pid;
+  int i = 0, ptctasks = 0, pid;
   int tcpfd;
   char *PTC[MAX_PTC];
 
@@ -68,15 +69,25 @@ int main(int argc, char **argv)
     }
     else if (strlen(argv[i]) == 3)
     {
-      PTC[j] = argv[i];
+      PTC[ptctasks] = argv[i];
       ptctasks++;
     }
   }
 
   if (UDPCommand(UDPmessage, UDP_BUFFER_SIZE, "REG", PTC, ptctasks, tcpPort) == -1)
+  {
+    printf("ERROR: Not possible to register with Central Server");
     exit(EXIT_SUCCESS);
+  }
   if (sendUDP(servername, udpPort, UDPmessage, udpReply, UDP_BUFFER_SIZE) == -1)
-    exit(EXIT_SUCCESS);
+  {
+      printf("ERROR: Not possible to register with Central Server");
+      exit(EXIT_SUCCESS);
+    }
+
+    if(csReply(udpReply)==-1)
+      exit(EXIT_SUCCESS);
+    
 
   while (1)
   {
@@ -118,6 +129,7 @@ void apanhaSIG()
 
   UDPCommand(UDPmessage, UDP_BUFFER_SIZE, "UNR", NULL, 0, tcpPort);
   sendUDP(servername, udpPort, UDPmessage, udpReply, UDP_BUFFER_SIZE);
+
   for (i = 0; i < processes; i++)
   {
     pid = wait(&status);
@@ -133,6 +145,8 @@ void apanhaSIG()
       exit(EXIT_FAILURE);
     }
   }
+  csReply(udpReply);
+
   exit(EXIT_SUCCESS);
 }
 
@@ -265,4 +279,36 @@ int readTCP(int fd)
   tcpCommand(fd, TCP_COMMAND_REPLY, TCP_REPLY_REPORT, "tmp",0);
   remove("tmp");
   return 0;
+}
+
+int csReply(char* reply)
+{
+  char*token,buffer[BUFFER_MAX], r=0;
+
+  token=strtok(reply, " ");
+
+  if(strcmp(token,"RAK")==0)
+    sprintf(buffer,"Register: ");
+  else if(strcmp(token,"UAK")==0)
+  {
+    sprintf(buffer,"Unregister: ");
+    r=-1;
+  }
+  else{
+    sprintf(buffer,"ERROR: ");
+    r=-1;
+  }
+
+  token=strtok(NULL, " ");
+
+  if(strcmp(token,"OK\n")==0)
+    strcat(buffer,"Successful\n");
+  else if (strcmp(token,"NOK\n")==0)
+    sprintf(buffer,"unsuccessful\n");
+  else{
+    sprintf(buffer,"Syntax error\n");
+      r=-1;
+    }
+    printf("%s",buffer);
+  return r;
 }

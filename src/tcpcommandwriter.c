@@ -138,7 +138,7 @@ int UDPconnect(int port){
     char writeonfile[30];
     char *FTPs[99];
 
-    sourcefile = open("file_processing_tasks.txt",O_WRONLY);
+    sourcefile = open("file_processing_tasks.txt",O_CREAT | O_WRONLY, S_IRWXU | S_IRWXG);
     if (sourcefile == -1)
     {
         printf("ERRO: %s", strerror(errno));
@@ -170,18 +170,17 @@ int UDPconnect(int port){
 
         token = strtok(NULL, PROTOCOL_DIVIDER);
 
-        while(1)
+        while(strlen(token)==3)
         {
-          if((strlen(token)==3) && (FTPcounter("fpt.h", PTC_WORDCOUNT))
-            && (FTPcounter("fpt.h", PTC_LONGESTWORD))
-            && (FTPcounter("fpt.h", PTC_UPPER))
-            && (FTPcounter("fpt.h", PTC_LOWER)))
+          if( (strlen(taskDescription(token))>0))
           {
             strcat(writeonscreen, token);
-            strcpy(FTPs[counter], token);
+            strcat(writeonscreen, " ");
+            FTPs[counter]= token;
             counter++;
             token = strtok(NULL, PROTOCOL_DIVIDER);
-          }else{
+          }
+          else{
             sendto(fd, "RAK NOK\n", 8, 0, (struct sockaddr*)&clientaddr,addrlen);
             return -1;
           }
@@ -197,7 +196,7 @@ int UDPconnect(int port){
 
         strcat(writeonscreen, token);
         strcat(writeonscreen, "\n");
-
+        printf("%s",writeonscreen);
 
         for(i = 0; FTPs[i] != NULL; i++)
         {
@@ -209,12 +208,15 @@ int UDPconnect(int port){
 
         sendto(fd, "RAK OK\n", 8, 0, (struct sockaddr*)&clientaddr,addrlen);
 
-    }else{
+    }
+    else if (strcmp(token, "UNR")==0){
+
+    }
+    else
+    {
       sendto(fd, "RAK ERR\n", 9, 0, (struct sockaddr*)&clientaddr,addrlen);
       return -1;
-    }/*else if (strcmp(token, "UNR")==0){
-
-    }*/
+    }
     return 0;
 }
 
