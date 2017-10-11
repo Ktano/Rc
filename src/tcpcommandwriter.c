@@ -4,6 +4,7 @@
 //
 */
 #include "tcpcommandwriter.h"
+#include "fpt.h"
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <unistd.h>
@@ -19,8 +20,7 @@
 
 #define BUFFER_MAX 128
 
-int tcpCommand(int tcpfd, char *maincommand, char *argument, char *file)
-{
+int tcpCommand(int tcpfd, char *maincommand, char *argument, char *file, int include_file_name){
   char buffer[128];
   struct stat buf;
   int fd2, size = 0, bytesRead;
@@ -49,9 +49,14 @@ int tcpCommand(int tcpfd, char *maincommand, char *argument, char *file)
     write(tcpfd, buffer, strlen(buffer));
     return 0;
   }
-  else
+  else if(include_file_name == 0)
   {
     sprintf(buffer /*,strlen(maincommand)+strlen(argument)+4*/, "%s %s %d ", maincommand, argument, size);
+    write(tcpfd, buffer, strlen(buffer));
+  }
+  else if(include_file_name == 1)
+  {
+    sprintf(buffer /*,strlen(maincommand)+strlen(argument)+4*/, "%s %s %s %d ", maincommand, argument, file, size);
     write(tcpfd, buffer, strlen(buffer));
   }
 
@@ -124,14 +129,14 @@ int TCPacceptint(int port)
 
 int UDPconnect(int port){
 
-    int fd, sourcefile, bytesRead, i;
+    int fd, sourcefile, bytesRead = 0, i, counter = 0;
     char *token;
     struct sockaddr_in serveraddr, clientaddr;
     socklen_t addrlen;
     char buffer[5000], writeonscreen[350];
     char ip_and_port[25];
     char writeonfile[30];
-    char *FTPs[99], counter = 0;
+    char *FTPs[99];
 
     sourcefile = open("file_processing_tasks.txt",O_WRONLY);
     if (sourcefile == -1)
@@ -151,44 +156,62 @@ int UDPconnect(int port){
 
     addrlen = sizeof(clientaddr);
 
-    bytesRead = 0;
     bytesRead = recvfrom(fd, buffer, sizeof(buffer), 0, (struct sockaddr*)&clientaddr, &addrlen);
 
     buffer[bytesRead]='\0';
 
     token = strtok(buffer, PROTOCOL_DIVIDER);
-    writeonscreen[0] = "+";
+
+
+
     if(strcmp(token, "REG")==0){
-      if(bytesRead == -1){
-        sendto(fd, "RAK ERR\n", 9, 0, (struct sockaddr*)&clientaddr,addrlen);
-      }else{
+
+        strcat(writeonscreen,"+ ");
+
         token = strtok(NULL, PROTOCOL_DIVIDER);
-        while(strlen(token)==3){
-          strcat(writeonscreen, token);
-          strcpy(FTPs[counter], token);
-          counter++;
-          token = strtok(NULL, PROTOCOL_DIVIDER);
+
+        while(1)
+        {
+          if((strlen(token)==3) && (FTPcounter("fpt.h", PTC_WORDCOUNT))
+            && (FTPcounter("fpt.h", PTC_LONGESTWORD))
+            && (FTPcounter("fpt.h", PTC_UPPER))
+            && (FTPcounter("fpt.h", PTC_LOWER)))
+          {
+            strcat(writeonscreen, token);
+            strcpy(FTPs[counter], token);
+            counter++;
+            token = strtok(NULL, PROTOCOL_DIVIDER);
+          }else{
+            sendto(fd, "RAK NOK\n", 8, 0, (struct sockaddr*)&clientaddr,addrlen);
+            return -1;
+          }
         }
 
-        ip_and_port[0] = " ";
+        strcat(ip_and_port, " ");
         strcat(ip_and_port, token);
         token = strtok(NULL, PROTOCOL_DIVIDER);
         strcat(ip_and_port, " ");
-        strcat(ip_and_port, token);
-        strcat(writeonscreen, token);
 
-        for(i = 0; FTPs[i] != NULL; i++){
+        strcat(ip_and_port, token);
+        strcat(ip_and_port, "\n");
+
+        strcat(writeonscreen, token);
+        strcat(writeonscreen, "\n");
+
+
+        for(i = 0; FTPs[i] != NULL; i++)
+        {
           strcpy(writeonfile, FTPs[i]);
           strcat(writeonfile, ip_and_port);
           write(sourcefile, writeonfile, strlen(writeonfile));
+          memset(writeonfile, 0, sizeof(writeonfile));
         }
 
-        if(write( sourcefile, writeonfile, strlen(writeonfile))!=-1)
-          printf("%s\n", writeonscreen);
-          sendto(fd, "RAK OK\n", 8, 0, (struct sockaddr*)&clientaddr,addrlen);
-        else
-          sendto(fd, "RAK NOK\n", 9, 0, (struct sockaddr*)&clientaddr,addrlen);
-      }
+        sendto(fd, "RAK OK\n", 8, 0, (struct sockaddr*)&clientaddr,addrlen);
+
+    }else{
+      sendto(fd, "RAK ERR\n", 9, 0, (struct sockaddr*)&clientaddr,addrlen);
+      return -1;
     }/*else if (strcmp(token, "UNR")==0){
 
     }*/
@@ -315,8 +338,6 @@ int filesplitter(char *file, int servers, int filecounter)
   }
   rewind(sourcefile);
 
-  printf("LINES: %d\n", lines);
-
   sprintf(partition, "%d%02d.txt", filecounter, files);
   partitionfile = fopen(partition, "w");
 
@@ -380,11 +401,7 @@ int connectToWS(char *filename, char *requestedFPT, int *fd_wsservers, int max_s
   size_t len = 0;
   ssize_t read;
   char *token, ip[15];
-  char search_FTP[5];
-  search_FTP[0] = '+';
-  int fd_position = 0, port;
-
-  strcat(search_FTP, requestedFPT);
+  int i = 0, port;
 
   fp = fopen(filename, "r");
 
@@ -396,17 +413,53 @@ int connectToWS(char *filename, char *requestedFPT, int *fd_wsservers, int max_s
 
     token = strtok(line, PROTOCOL_DIVIDER);
 
-    if (strcmp(token, search_FTP) == 0)
+    if (strcmp(token, requestedFPT) == 0)
     {
       token = strtok(NULL, PROTOCOL_DIVIDER);
       strcpy(ip, token);
       token = strtok(NULL, PROTOCOL_DIVIDER);
       port = atoi(token);
-      fd_wsservers[fd_position] = TCPconnect(ip, port);
-      fd_position++;
+      fd_wsservers[i] = TCPconnect(ip, port);
+      i++;
     }
   }
 
   fclose(fp);
-  return fd_position + 1;
+  return i + 1;
+}
+
+void LSTcommand(char *filename, char *requestedFPT)
+{
+  FILE *fp;
+  char *line = NULL;
+  size_t len = 0;
+  ssize_t read;
+  char *token;
+  int counter = 1;
+
+  fp = fopen(filename, "r");
+
+  if (fp == NULL)
+    exit(EXIT_FAILURE);
+
+  printf("%s:",requestedFPT);
+
+  while ((read = getline(&line, &len, fp)) != -1)
+  {
+    token = strtok(line, PROTOCOL_DIVIDER);
+
+    if (strcmp(token, requestedFPT) == 0)
+    {
+      token = strtok(NULL, "");
+      if(counter==1){
+        printf(" %s\n",token);
+      }else{
+        printf("     %s\n",token);
+      }
+    }
+
+  }
+
+  fclose(fp);
+
 }

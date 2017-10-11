@@ -3,10 +3,12 @@
 #include "fpt.h"
 #include <unistd.h>
 #include <sys/types.h>
+#include <sys/stat.h>
 #include <string.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <errno.h>
+#include <fcntl.h>
 
 #define DEFAULT_PORT 58006
 #define BUFFER_MAX 128
@@ -17,14 +19,17 @@
 #define COMANDO_LIST "list"
 #define COMANDO_REQUEST "request"
 
+int processFileReport(char *FPT, char *filename, char *buffer, int fd);
+int processReport(char *FPT, char *buffer, int fd);
+
 int main(int argc, char **argv)
 {
-  int port = DEFAULT_PORT, i, bytesRead, bytesToRead;
-  int fd; //used for TCP comunication
+  int port = DEFAULT_PORT, i, bytesRead, bytesToRead, numargs;
+  int fd; /*used for TCP comunication*/
   char servername[BUFFER_MAX], buffer[BUFFER_MAX];
   char commandlinebuffer[BUFFER_MAX];
   char *args[MAXARGS + 1];
-  char *token, tmp[128];
+  char *token, tmp[BUFFER_MAX];
 
   /* sets the default value for the server name*/
   if (gethostname(servername, BUFFER_MAX) == -1)
@@ -46,7 +51,6 @@ int main(int argc, char **argv)
   {
     printf(">> ");
     /* read arguments from commandline*/
-    int numargs;
     numargs = readLineArguments(args, MAXARGS + 1, commandlinebuffer, BUFFER_MAX);
 
     /* if exit or no arguments received exit*/
@@ -61,7 +65,7 @@ int main(int argc, char **argv)
       if ((fd = TCPconnect(servername, port)) == -1)
         continue;
 
-      if(tcpCommand(fd, "LST", NULL, NULL)==-1)
+      if (tcpCommand(fd, "LST", NULL, NULL,0) == -1)
         continue;
 
       bytesRead = 0;
@@ -72,7 +76,7 @@ int main(int argc, char **argv)
         continue;
       }
 
-      buffer[bytesRead]='\0';
+      buffer[bytesRead] = '\0';
 
       token = strtok(buffer, PROTOCOL_DIVIDER);
       if (strcmp(token, TCP_COMMAND_PROCTASK) != 0)
@@ -113,13 +117,13 @@ int main(int argc, char **argv)
           bytesToRead -= strlen(token);
         }
 
-        if ((bytesRead = read(fd, buffer, BUFFER_MAX-1)) == -1)
+        if ((bytesRead = read(fd, buffer, BUFFER_MAX - 1)) == -1)
         {
           printf("error: %s\n", strerror(errno));
           close(fd);
           continue;
         }
-        buffer[bytesRead]='\0'; //terminates the buffer
+        buffer[bytesRead] = '\0'; /*terminates the buffer*/
 
         token = strtok(buffer, PROTOCOL_DIVIDER);
         i = 1;
@@ -154,9 +158,49 @@ int main(int argc, char **argv)
       if ((fd = TCPconnect(servername, port)) == -1)
         continue;
 
-      if(tcpCommand(fd, "REQ", args[1], args[2])==-1)
+      if (tcpCommand(fd, "REQ", args[1], args[2],0) == -1)
         continue;
 
+      if ((bytesRead = read(fd, buffer, BUFFER_MAX - 1)) == -1)
+      {
+        printf("error: %s\n", strerror(errno));
+        close(fd);
+        continue;
+      }
+      buffer[bytesRead] = '\0';
+
+      token = strtok(buffer, PROTOCOL_DIVIDER);
+      if (strcmp(token, TCP_COMMAND_REPLY) != 0)
+      {
+        printf("request:Unexpected Reply Received\n");
+        close(fd);
+        continue;
+      }
+
+      token = strtok(NULL, PROTOCOL_DIVIDER);
+      if (strcmp(token, TCP_ARG_EOF) == 0)
+      {
+        printf("request: It is not possible to answer the request. Potential invalid Processing task code\n");
+        close(fd);
+        continue;
+      }
+      else if (strcmp(token, TCP_ARG_ERR) == 0)
+      {
+        printf("request: The request is not currectly formulated\n");
+        close(fd);
+        continue;
+      }
+      else
+      {
+        if (strcmp(token, "R") == 0)
+          processReport(args[1], buffer, fd);
+        else if (strcmp(token, "F") == 0)
+          processFileReport(args[1], args[2], buffer, fd);
+        else
+          printf("request: The reply is not currectly formulated\n");
+      }
+
+      close(fd);
     }
     /* Outros commandos desconhecidos*/
     else
@@ -164,4 +208,105 @@ int main(int argc, char **argv)
       printf("Unknown Command try again.\n");
     }
   }
+}
+
+int processFileReport(char *FPT, char *filename, char *buffer, int fd)
+{
+  char *token, tmp[BUFFER_MAX];
+  int fd2, bytesToRead, bytesRead;
+
+  token = strtok(NULL, PROTOCOL_DIVIDER);
+  bytesToRead = atoi(token);
+
+  snprintf(tmp, strlen(filename) - strlen(".txt")+1, "%s", filename);
+  strcat(tmp, "_");
+  strcat(tmp, FPT);
+  strcat(tmp, ".txt");
+
+  printf("%d Bytes\n", bytesToRead);
+
+  if ((fd2 = open(tmp, O_CREAT | O_WRONLY, S_IRWXU | S_IRWXG)) == -1)
+  {
+    printf("ERROR: %s\n", strerror(errno));
+    return -1;
+  }
+
+  token = strtok(NULL, "");
+  if (token != NULL)
+  {
+    write(fd2, token, strlen(token));
+    bytesToRead -= strlen(token);
+  }
+
+  while (bytesToRead > 0)
+  {
+    if ((bytesRead = read(fd, buffer, BUFFER_MAX - 1)) == -1)
+    {
+      printf("error: %s\n", strerror(errno));
+      close(fd2);
+      remove(tmp);
+      return -1;
+    }
+    buffer[bytesRead] = '\0';
+
+    if (bytesRead <= bytesToRead)
+    {
+      write(fd2, buffer, strlen(buffer));
+      bytesToRead -= bytesRead;
+    }
+    else if (buffer[bytesRead - 1] == '\n')
+    {
+      write(fd2, buffer, strlen(buffer - 1));
+      bytesToRead -= bytesRead;
+    }
+    else
+    {
+      printf("request: Error reply not correctly formulated\n");
+      close(fd2);
+      remove(tmp);
+      return -1;
+    }
+  }
+  return 0;
+  close(fd2);
+}
+
+int processReport(char *FPT, char *buffer, int fd)
+{
+  char *token;
+  int bytesToRead, bytesRead;
+
+  token = strtok(NULL, PROTOCOL_DIVIDER);
+  bytesToRead = atoi(token);
+  printf("%s:\t", taskDescription(FPT));
+
+
+  token = strtok(NULL, "");
+  if (token != NULL)
+  {
+    printf("%s", token);
+    bytesToRead -= strlen(token);
+  }
+
+  while (bytesToRead > 0)
+  {
+    if ((bytesRead = read(fd, buffer, BUFFER_MAX - 1)) == -1)
+    {
+      printf("error: %s\n", strerror(errno));
+      return -1;
+    }
+    buffer[bytesRead] = '\0';
+
+    if (bytesRead <= bytesToRead+1)
+    {
+      printf("%s", buffer);
+      bytesToRead -= bytesRead;
+    }
+    else
+    {
+      printf("request: Error reply not correctly formulated\n");
+      return -1;
+    }
+  }
+  return 0;
 }
