@@ -25,7 +25,7 @@ int main(int argc, char **argv)
   char requestedFPT[4], filename[10], *fileToWs;
   int bytesToRead, fileToWsCounter = 1, i;
   char *token;
-  char *response = "";
+  char response[BUFFER_MAX], tasks[BUFFER_MAX];
   char from_ws[BUFFER_MAX];
   int wordcount_results[10];
   char *longestword_results[10];
@@ -33,70 +33,91 @@ int main(int argc, char **argv)
   socklen_t addr_size;
   char host[6], port[16];
 
+
+
   if ((pid = fork()) == -1)
   {
     printf("ERROR: %s\n", strerror(errno));
   }
   else if (pid == 0)
   {
-
     while (1)
     {
-
+      /*waits for a command from a user*/
       if ((fd = TCPacceptint(GROUP_PORT)) == -1)
+      {
+        printf ("ERROR: %s",strerror(errno));
         continue;
+      }
 
+      /* forks*/
       if ((tcp_pid = fork()) == -1)
       {
+        close(fd);
         printf("ERROR: %s\n", strerror(errno));
         continue;
       }
+
+      /* if is child reads and processes the command*/
       else if (tcp_pid == 0)
       {
 
         bytesRead = read(fd, buffer, BUFFER_MAX - 1);
         buffer[bytesRead] = '\0';
-
         addr_size = sizeof(struct sockaddr_in);
+
         getsockname(fd, &clientaddr, &addr_size);
         getnameinfo((struct sockaddr *)&clientaddr, addr_size, host, sizeof(host), port, sizeof(port), NI_NUMERICHOST | NI_NUMERICSERV);
 
+        tasks[0]='\0';
         token = strtok(buffer, PROTOCOL_DIVIDER);
 
-        if (strcmp(token, TCP_COMMAND_LIST))
+        if (strcmp(token, TCP_COMMAND_LIST)==0)
         {
 
           printf("List request: %s %s\n", host, port);
-          strcat(response, "FTP");
 
-          if ((servers = FTPcounter("file_processing_tasks.txt", PTC_WORDCOUNT)) > 0)
+
+          if ( FTPcounter("file_processing_tasks.txt", PTC_WORDCOUNT) > 0)
           {
             servers++;
-            LSTcommand("file_processing_tasks.txt", PTC_WORDCOUNT);
-            strcat(response, " WCT");
+            strcat(tasks, " WCT");
+            printf("%s", tasks);
           }
-          if ((servers = FTPcounter("file_processing_tasks.txt", PTC_LONGESTWORD)) > 0)
+          if ( FTPcounter("file_processing_tasks.txt", PTC_LONGESTWORD) > 0)
           {
             servers++;
-            LSTcommand("file_processing_tasks.txt", PTC_LONGESTWORD);
-            strcat(response, " FLW");
+            strcat(tasks, " FLW");
+            printf("%s", tasks);
           }
-          if ((servers = FTPcounter("file_processing_tasks.txt", PTC_UPPER)) > 0)
+          if ( FTPcounter("file_processing_tasks.txt", PTC_UPPER) > 0)
           {
             servers++;
-            LSTcommand("file_processing_tasks.txt", PTC_UPPER);
-            strcat(response, " UPP");
+            strcat(tasks, " UPP");
+            printf("%s", tasks);
           }
-          if ((servers = FTPcounter("file_processing_tasks.txt", PTC_LOWER)) > 0)
+          if (FTPcounter("file_processing_tasks.txt", PTC_LOWER) > 0)
           {
             servers++;
-            LSTcommand("file_processing_tasks.txt", PTC_LOWER);
-            strcat(response, " LOW");
+            strcat(tasks, " LOW");
+            printf("%s", tasks);
           }
-          response[4] = servers;
-          response[strlen(response)] = '\0';
+
+          token = strtok(NULL, "");
+          printf("%s", token);
+
+          sprintf(response, "FPT %d%s\n",servers,tasks);
+
+          if(servers==0)
+            sprintf(response, "FPT EOF\n");
+          else if(strcmp(token,"\n"))
+            sprintf(response, "FPT ERR\n");
+          else
+            sprintf(response, "FPT %d%s\n",servers,tasks);
+
           write(fd, response, strlen(response));
         }
+
         else if (strcmp(token, "REQ") == 0)
         {
 
@@ -194,8 +215,10 @@ int main(int argc, char **argv)
           }
         }
 
+        close(fd);
         exit(EXIT_SUCCESS);
       }
+      /* if is parent closed the file descriptor*/
       else
         close(fd);
     }

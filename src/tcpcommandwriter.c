@@ -138,14 +138,10 @@ int UDPconnect(int port){
     char writeonfile[30];
     char *FTPs[99];
 
-    sourcefile = open("file_processing_tasks.txt",O_CREAT | O_WRONLY, S_IRWXU | S_IRWXG);
-    if (sourcefile == -1)
-    {
-        printf("ERRO: %s", strerror(errno));
-        return -1;
-    }
-
     fd = socket(AF_INET,SOCK_DGRAM,0);
+
+
+
 
     memset((void*)&serveraddr,(int)'\0', sizeof(serveraddr));
     serveraddr.sin_family = AF_INET;
@@ -160,13 +156,21 @@ int UDPconnect(int port){
 
     buffer[bytesRead]='\0';
 
+    sourcefile = open("file_processing_tasks.txt",O_CREAT | O_WRONLY, S_IRWXU | S_IRWXG);
+    if (sourcefile == -1)
+    {
+        printf("ERRO: %s", strerror(errno));
+        return -1;
+    }
+
     token = strtok(buffer, PROTOCOL_DIVIDER);
 
 
 
     if(strcmp(token, "REG")==0){
 
-        strcat(writeonscreen,"+ ");
+        sprintf(writeonscreen,"+ ");
+        
 
         token = strtok(NULL, PROTOCOL_DIVIDER);
 
@@ -182,11 +186,12 @@ int UDPconnect(int port){
           }
           else{
             sendto(fd, "RAK NOK\n", 8, 0, (struct sockaddr*)&clientaddr,addrlen);
+            close(sourcefile);
+            close(fd);
             return -1;
           }
         }
 
-        strcat(ip_and_port, " ");
         strcat(ip_and_port, token);
         token = strtok(NULL, PROTOCOL_DIVIDER);
         strcat(ip_and_port, " ");
@@ -200,7 +205,7 @@ int UDPconnect(int port){
 
         for(i = 0; FTPs[i] != NULL; i++)
         {
-          strcpy(writeonfile, FTPs[i]);
+          sprintf(writeonfile,"+%s ", FTPs[i]);
           strcat(writeonfile, ip_and_port);
           write(sourcefile, writeonfile, strlen(writeonfile));
           memset(writeonfile, 0, sizeof(writeonfile));
@@ -215,8 +220,12 @@ int UDPconnect(int port){
     else
     {
       sendto(fd, "RAK ERR\n", 9, 0, (struct sockaddr*)&clientaddr,addrlen);
+      close(sourcefile);
+      close(fd);
       return -1;
     }
+    close(sourcefile);
+    close(fd);
     return 0;
 }
 
@@ -391,6 +400,7 @@ int FTPcounter(char *filename, char *ftp)
     if (same == 1)
     {
       counter++;
+      same = 0;
     }
   }
 
