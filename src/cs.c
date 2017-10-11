@@ -1,147 +1,118 @@
-#include "commandlinereader.h"
 #include "tcpcommandwriter.h"
-#include "fpt.h"
-#include <unistd.h>
 #include <sys/types.h>
 #include <sys/stat.h>
+#include <unistd.h>
 #include <string.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <errno.h>
 #include <fcntl.h>
-#include <signal.h>
-#include <sys/wait.h>
-#include <ctype.h>
-
+#include <sys/socket.h>
+#include <netinet/in.h>
+#include <netdb.h>
+#include <arpa/inet.h>
 
 #define GROUP_PORT 58006
 #define BUFFER_MAX 128
 
 int main (int argc, char** argv){
 
-    int fd, pid, bytesRead, working_servers, servers = 0;
+    int fd, pid, tcp_pid, bytesRead, working_servers, servers = 0, fp;
     char buffer[BUFFER_MAX];
     int fd_wsservers[10], fd_position = 0;
-    char requestedFPT[4], command[4];
-    int filecounter = 1, fileBytes;
+    char requestedFPT[4], filename[10], fileToSplit[5];
+    int  bytesToRead, filecounter = 1;
     char *token;
-    FILE *fp;
-    char filename = "0000" /*usa o PID depois do Fork to TCP connect*/, response;
+    char* response = "";
 
-    /* antes de qualquer while é preciso fazer um fork
-    se for parent faz UDPconnect(PORT) e escreve no ficheiro quando recebe um WSs REG (atenção que isto precisa de Mutex ou algo do genero partilhado)
-    se for child é que faz o TCPaccept
-    Depois do TCPaccept fazes logo outro fork
-    se for o parent volta para o TCPaccept
-    
-    se for o child recebe os request (LST ou REQ)
-     se for LST lê o ficheiro para ver as FPT disponiveis e envia para o user
-     
-     se for REQ lê a FPT pedida
-        guarda o ficheiro enviado pelo user com o nome PID.TXT
-        lê o ficheiro com os WSs para ver quantos e quais os WSs que processam a FPT
-        divide o ficheiro PID00n.TXT
-        envia cada parte para um dos FPTs
-        espera a resposta de cada um dos FPTs
-        agrega a resposta dos FPTs
-        responde ao user com a resposta agregada
-    */
-    
-    while (1)
+    if ((pid = fork()) == -1)
     {
-
-      UDPconnect(PORT);
-
-      if(fd = TCPacceptint(GROUP_PORT)==-1)
-        continue;
-
-      if ((pid = fork()) == -1)
-      {
         printf("ERROR: %s", strerror(errno));
-        continue;
-      }
-      else if (pid == 0)
-      {
-        bytesRead = read(fd, buffer, BUFFER_MAX-1);
-        buffer[bytesRead]='\0';
 
-        token = strtok(buffer, PROTOCOL_DIVIDER);
+    }else if (pid == 0){
 
-        if(strcmp(token, TCP_COMMAND_LIST)){
-          strcat(response, FTP);
-          strcat(response, " ");
-          strcat(response, servers);
-          if(FTPcounter( filename, "WCT") > 0){
-            servers++;
-            strcat(response, " WCT");
-          }if(FTPcounter( filename, "FLW") > 0){
-            servers++;
-            strcat(response, " FLW");
-          }if(FTPcounter( filename, "UPP") > 0){
-            servers++;
-            strcat(response, " UPP");
-          }if(FTPcounter( filename, "LOW") > 0){
-            servers++;
-            strcat(response, " LOW");
+      if((fd = TCPacceptint(GROUP_PORT))==-1){}
+
+      if ((tcp_pid = fork()) == -1){
+            printf("ERROR: %s", strerror(errno));
+
+      }else if(tcp_pid == 0){
+
+        while(1){
+          bytesRead = read(fd, buffer, BUFFER_MAX-1);
+          buffer[bytesRead]='\0';
+
+          token = strtok(buffer, PROTOCOL_DIVIDER);
+
+          if(strcmp(token, TCP_COMMAND_LIST)){
+            strcat(response, "FTP");
+            strcat(response, "  ");
+            if((servers = FTPcounter( "file_processing_tasks.txt", "WCT")) > 0){
+              servers++;
+              strcat(response, " WCT");
+            }if((servers = FTPcounter( "file_processing_tasks.txt", "FLW")) > 0){
+              servers++;
+              strcat(response, " FLW");
+            }if((servers = FTPcounter( "file_processing_tasks.txt", "UPP")) > 0){
+              servers++;
+              strcat(response, " UPP");
+            }if((servers = FTPcounter( "file_processing_tasks.txt", "LOW")) > 0){
+              servers++;
+              strcat(response, " LOW");
+            }
+
+            response[4] = servers;
+            response[strlen(response)] = '\0';
+            write(fd, response, strlen(response));
+
+          }else if(strcmp(token, "REQ")==0){
+
+            token = strtok(NULL, PROTOCOL_DIVIDER);
+
+            strcpy(requestedFPT, token);
+            requestedFPT[3] = '\0';
+
+            token = strtok(NULL, PROTOCOL_DIVIDER);
+
+            bytesToRead = atoi(token);
+
+            snprintf(filename, 5, "%d", getpid());
+            strcat(filename, ".txt");
+
+            fp = open(filename,(O_CREAT | O_WRONLY));
+
+            token = strtok(buffer, "");
+            write(fp, token, strlen(token));
+            bytesToRead -= strlen(token);
+
+            while (bytesToRead > 0){
+
+                bytesRead=read(fd,buffer,BUFFER_MAX-1);
+                buffer[bytesRead]='\0';
+                write(fp,buffer,bytesRead);
+                bytesToRead -= bytesRead;
+            }
+
+            working_servers = FTPcounter( "file_processing_tasks.txt", requestedFPT);
+            filesplitter( filename, working_servers, getpid());
+            fd_wsservers = connectToWS( filename, requestedFPT);
+
+              //for 0 to working_servers -1, read each file and send each to each fd
+              //then expect the answer
+              //close all fd's and exit
           }
-          response[4] = servers;
-          response[strlen(response)] = '\0';
-          write(fd, response, strlen(response));
-
-        }
-        else if(strcmp(token, "REQ"))==0){
-
-          token = strtok(NULL, PROTOCOL_DIVIDER);
-
-          strcpy(requestedFPT, token);
-          requestedFPT[3] = '\0';
-
-          token = strtok(NULL, PROTOCOL_DIVIDER);
-
-          bytesToRead = atoi(token);
-
-          strcat(filename, filecounter);
-          filecounter++;
-          strcat(filename, ".txt");
-
-          fp = fopen(filename, "wb");
-
-          token = strtok(buffer, "");
-          write(fp, token, strlen(token));
-          bytesToRead -= strlen(token);
-
-          while (bytesToRead > 0){
-
-              bytesRead=read(fd,buffer,BUFFER_MAX-1);
-              buffer[bytesRead]='\0';
-              write(fp,buffer,bytesRead);
-              bytesToRead -= bytesRead;
-          }
-
-          working_servers = FTPcounter( filename, requestedFPT);
-          filesplitter( filename, working_servers);
-          //read every line in processing tasks filename
-          //find the ones that have the designed FPT
-          //fetch the ip and port of that line
-          //connect via TCPconnect using that ip and port
-          //returning the fd and placing it in the array
-          //for 0 to working_servers -1, read each file and send each to each fd
-          //then expect the answer
-          //close all fd's and exit
         }
         exit(EXIT_SUCCESS);
+      }else{
+        if((fd = TCPacceptint(GROUP_PORT))==-1){}
+
       }
-      else
-      {
-        processes++;
-        continue;
-      }
+
+    exit(EXIT_SUCCESS);
     }
-
-
-
-
-
-
+    else{
+      UDPconnect(GROUP_PORT);
+    }
+    return 0;
 
 }

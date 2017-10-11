@@ -122,65 +122,77 @@ int TCPacceptint(int port)
   return newfd;
 }
 
-int UDPconnect(int port)
-{
+int UDPconnect(int port){
 
-  int fd, sourcefile, bytesRead;
-  char *token;
-  struct sockaddr_in serveraddr, clientaddr;
-  socklen_t addrlen;
-  char buffer[5000], writeonfile[50], writeonscreen[50];
+    int fd, sourcefile, bytesRead, i;
+    char *token;
+    struct sockaddr_in serveraddr, clientaddr;
+    socklen_t addrlen;
+    char buffer[5000], writeonscreen[350];
+    char ip_and_port[25];
+    char writeonfile[30];
+    char *FTPs[99], counter = 0;
 
-  sourcefile = open("file_processing_tasks.txt", O_WRONLY);
-  if (sourcefile == -1)
-  {
-    printf("ERRO: %s", strerror(errno));
-    return -1;
-  }
-
-  fd = socket(AF_INET, SOCK_DGRAM, 0);
-
-  memset((void *)&serveraddr, (int)'\0', sizeof(serveraddr));
-  serveraddr.sin_family = AF_INET;
-  serveraddr.sin_addr.s_addr = htonl(INADDR_ANY);
-  serveraddr.sin_port = htons((u_short)port);
-
-  bind(fd, (struct sockaddr *)&serveraddr, sizeof(serveraddr));
-
-  addrlen = sizeof(clientaddr);
-
-  bytesRead = 0;
-  bytesRead = recvfrom(fd, buffer, sizeof(buffer), 0, (struct sockaddr *)&clientaddr, &addrlen);
-
-  buffer[bytesRead] = '\0';
-
-  token = strtok(buffer, PROTOCOL_DIVIDER);
-
-  if (strcmp(token, "REG") == 0)
-  {
-    if (bytesRead == -1)
+    sourcefile = open("file_processing_tasks.txt",O_WRONLY);
+    if (sourcefile == -1)
     {
-      sendto(fd, "RAK ERR\n", 9, 0, (struct sockaddr *)&clientaddr, addrlen);
+        printf("ERRO: %s", strerror(errno));
+        return -1;
     }
-    else
-    {
 
-      token = strtok(buffer, "");
-      strcat(writeonscreen, "+ ");
-      strcat(writeonscreen, token);
+    fd = socket(AF_INET,SOCK_DGRAM,0);
 
-      if (write(sourcefile, writeonfile, strlen(writeonfile)) != -1)
-      {
-        printf("%s\n", writeonscreen);
-        sendto(fd, "RAK OK\n", 8, 0, (struct sockaddr *)&clientaddr, addrlen);
+    memset((void*)&serveraddr,(int)'\0', sizeof(serveraddr));
+    serveraddr.sin_family = AF_INET;
+    serveraddr.sin_addr.s_addr = htonl(INADDR_ANY);
+    serveraddr.sin_port = htons((u_short)port);
+
+    bind(fd,(struct sockaddr*)&serveraddr,sizeof(serveraddr));
+
+    addrlen = sizeof(clientaddr);
+
+    bytesRead = 0;
+    bytesRead = recvfrom(fd, buffer, sizeof(buffer), 0, (struct sockaddr*)&clientaddr, &addrlen);
+
+    buffer[bytesRead]='\0';
+
+    token = strtok(buffer, PROTOCOL_DIVIDER);
+    writeonscreen[0] = "+";
+    if(strcmp(token, "REG")==0){
+      if(bytesRead == -1){
+        sendto(fd, "RAK ERR\n", 9, 0, (struct sockaddr*)&clientaddr,addrlen);
+      }else{
+        token = strtok(NULL, PROTOCOL_DIVIDER);
+        while(strlen(token)==3){
+          strcat(writeonscreen, token);
+          strcpy(FTPs[counter], token);
+          counter++;
+          token = strtok(NULL, PROTOCOL_DIVIDER);
+        }
+
+        ip_and_port[0] = " ";
+        strcat(ip_and_port, token);
+        token = strtok(NULL, PROTOCOL_DIVIDER);
+        strcat(ip_and_port, " ");
+        strcat(ip_and_port, token);
+        strcat(writeonscreen, token);
+
+        for(i = 0; FTPs[i] != NULL; i++){
+          strcpy(writeonfile, FTPs[i]);
+          strcat(writeonfile, ip_and_port);
+          write(sourcefile, writeonfile, strlen(writeonfile));
+        }
+
+        if(write( sourcefile, writeonfile, strlen(writeonfile))!=-1)
+          printf("%s\n", writeonscreen);
+          sendto(fd, "RAK OK\n", 8, 0, (struct sockaddr*)&clientaddr,addrlen);
+        else
+          sendto(fd, "RAK NOK\n", 9, 0, (struct sockaddr*)&clientaddr,addrlen);
       }
-      else
-        sendto(fd, "RAK NOK\n", 9, 0, (struct sockaddr *)&clientaddr, addrlen);
-    }
-  } /*else if (strcmp(token, "UNR")==0){
+    }/*else if (strcmp(token, "UNR")==0){
 
     }*/
-  return 0;
+    return 0;
 }
 
 int UDPCommand(char *buffer, int bufferlen, char *maincommand, char **PTC, int lenghtPTC, int port)
