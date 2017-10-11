@@ -154,7 +154,7 @@ int readTCP(int fd)
   if (strcmp(token, TCP_COMMAND_WORKREQUEST) != 0)
   {
     printf("request:Unexpected request Received\n");
-    tcpCommand(fd, TCP_COMMAND_WORKREQUEST, TCP_ARG_ERR, NULL);
+    tcpCommand(fd, TCP_COMMAND_WORKREQUEST, TCP_ARG_ERR, NULL,0);
     return -1;
   }
 
@@ -168,7 +168,7 @@ int readTCP(int fd)
   if ((fd2 = open(filename, O_CREAT | O_WRONLY, S_IRWXU | S_IRWXG)) == -1)
   {
     printf("ERROR: %s\n", strerror(errno));
-    tcpCommand(fd, TCP_COMMAND_WORKREQUEST, TCP_ARG_ERR, NULL);
+    tcpCommand(fd, TCP_COMMAND_WORKREQUEST, TCP_ARG_ERR, NULL,0);
     return -1;
   }
 
@@ -224,7 +224,7 @@ int readTCP(int fd)
     FILE *tfd;
     if ((wordCount = fileWordCount(filename)) == -1)
     {
-      tcpCommand(fd, TCP_COMMAND_WORKREQUEST, TCP_ARG_ERR, NULL);
+      tcpCommand(fd, TCP_COMMAND_WORKREQUEST, TCP_ARG_ERR, NULL,0);
       return -1;
     }
     tfd = fopen("tmp", "w");
@@ -238,7 +238,7 @@ int readTCP(int fd)
     FILE *tfd;
     if (fileLongestWord(filename, answer, BUFFER_MAX) == -1)
     {
-      tcpCommand(fd, TCP_COMMAND_WORKREQUEST, TCP_ARG_ERR, NULL);
+      tcpCommand(fd, TCP_COMMAND_WORKREQUEST, TCP_ARG_ERR, NULL,0);
       return -1;
     }
 
@@ -251,18 +251,18 @@ int readTCP(int fd)
   {
     if (changeAllChars(filename, "tmp", strcmp(ptc, PTC_UPPER) == 0 ? toupper : tolower) == -1)
     {
-      tcpCommand(fd, TCP_COMMAND_WORKREQUEST, TCP_ARG_ERR, NULL);
+      tcpCommand(fd, TCP_COMMAND_WORKREQUEST, TCP_ARG_ERR, NULL,0);
       return -1;
     }
   }
   else
   {
-    tcpCommand(fd, TCP_COMMAND_WORKREQUEST, TCP_ARG_EOF, NULL);
+    tcpCommand(fd, TCP_COMMAND_WORKREQUEST, TCP_ARG_EOF, NULL,0);
     return -1;
   }
 
   /* final reply and delete data*/
-  tcpCommand(fd, TCP_COMMAND_REPLY, TCP_REPLY_REPORT, "tmp");
+  tcpCommand(fd, TCP_COMMAND_REPLY, TCP_REPLY_REPORT, "tmp",0);
   remove("tmp");
   return 0;
 }

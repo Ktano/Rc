@@ -325,6 +325,7 @@ int filesplitter(char *file, int servers, int filecounter)
 
   char line[128], partition[9];
   int files = 1, counter = 1;
+  char output_directory[14] = "output_files/";
 
   int ch = 0, lines = 1;
 
@@ -338,7 +339,7 @@ int filesplitter(char *file, int servers, int filecounter)
   }
   rewind(sourcefile);
 
-  sprintf(partition, "%d%02d.txt", filecounter, files);
+  sprintf(partition, "%s%d%02d.txt", output_directory, filecounter, files);
   partitionfile = fopen(partition, "w");
 
   while (fgets(line, sizeof line, sourcefile) != NULL)
@@ -348,7 +349,7 @@ int filesplitter(char *file, int servers, int filecounter)
       fclose(partitionfile);
       counter = 1;
       files++;
-      sprintf(partition, "%d%02d.txt", filecounter, files);
+      sprintf(partition, "%s%d%02d.txt", output_directory, filecounter, files);
       partitionfile = fopen(partition, "w");
     }
     counter++;
@@ -358,8 +359,6 @@ int filesplitter(char *file, int servers, int filecounter)
   return 0;
 }
 
-
-/* Counts the number of servers that can process the ftp task*/
 int FTPcounter(char *filename, char *ftp)
 {
   FILE *fp;

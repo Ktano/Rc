@@ -31,6 +31,8 @@ int main (int argc, char** argv){
     struct sockaddr clientaddr;
     socklen_t addr_size;
     char host[6], port[16];
+    char input_directory[14] = "output_files/";
+    char directory[30];
 
     if ((pid = fork()) == -1)
     {
@@ -97,8 +99,10 @@ int main (int argc, char** argv){
 
               snprintf(filename, 5, "%d", getpid());
               strcat(filename, ".txt");
+              strcpy(directory, input_directory);
+              strcat(directory, filename);
 
-              fp = open(filename,(O_CREAT | O_WRONLY));
+              fp = open(directory,(O_CREAT | O_WRONLY));
 
               token = strtok(buffer, "");
               write(fp, token, strlen(token));
@@ -115,8 +119,8 @@ int main (int argc, char** argv){
               close(fp);
 
               working_servers = FTPcounter( "file_processing_tasks.txt", requestedFPT);
-              filesplitter( filename, working_servers, getpid());
-              fd_position = connectToWS( filename, requestedFPT, fd_wsservers, working_servers);
+              filesplitter( directory, working_servers, getpid());
+              fd_position = connectToWS( "file_processing_tasks.txt", requestedFPT, fd_wsservers, working_servers);
 
               for(i = 0; i < fd_position; i++){
 
