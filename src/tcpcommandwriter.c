@@ -379,7 +379,7 @@ int filesplitter(char *file, int servers, int filecounter)
   FILE *sourcefile;
   FILE *partitionfile;
 
-  char line[128], partition[9];
+  char partition[BUFFER_MAX];
   int files = 1, counter = 1;
   int linesperfile;
 
@@ -398,7 +398,8 @@ int filesplitter(char *file, int servers, int filecounter)
   sprintf(partition, "input_files/%05d%02d.txt", filecounter, files);
   partitionfile = fopen(partition, "w");
 
-  linesperfile = lines / servers while (fgets(line, sizeof line, sourcefile) != NULL)
+  linesperfile = lines / servers;
+  while (ch = fgetc(sourcefile) != NULL)
   {
     if (linesperfile < counter) && files<servers)
       {
@@ -408,8 +409,9 @@ int filesplitter(char *file, int servers, int filecounter)
         sprintf(partition, "input_files/%05d%02d.txt", filecounter, files);
         partitionfile = fopen(partition, "w");
       }
-    counter++;
-    fprintf(partitionfile, "%s", line);
+    if (ch == '\n' || ch == '\r')
+      counter++;
+    fputc(ch, partitionfile);
   }
   fclose(sourcefile);
   return 0;
