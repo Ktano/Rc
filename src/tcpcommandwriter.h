@@ -15,7 +15,7 @@
 
 int tcpCommand(int tcpfd, char *maincommand, char *argument, char *file, int include_file_name);
 int TCPconnect(char *servername, int port);
-int TCPacceptint(int fd, int port);
+int TCPacceptint(int *fd, int port);
 int UDPconnect(int port);
 int filesplitter(char* file, int servers, int filecounter);
 int UDPCommand(char* buffer,int bufferlen, char *maincommand, char **PTC,int lenghtPTC, int port);

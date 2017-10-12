@@ -40,18 +40,19 @@ int main(int argc, char **argv)
   {
     printf("ERROR: %s\n", strerror(errno));
   }
-  else if (pid == 0)
+  else if (pid != 0)
   {
     while (1)
     { 
 
       /*waits for a command from a user*/
-      if ((connfd = TCPacceptint(listenfd,GROUP_PORT)) == -1)
+      listenfd=0;
+      if ((connfd = TCPacceptint(&listenfd,GROUP_PORT)) == -1)
       {
-        printf ("ERROR: %s",strerror(errno));
+        printf ("ERROR: %s\n",strerror(errno));
         continue;
       }
-
+      printf("accpeted connection\n");
       /* forks*/
       if ((tcp_pid = fork()) == -1)
       {
@@ -211,7 +212,7 @@ int main(int argc, char **argv)
             close(fd_wsservers[i]);
           }
         }
-
+        shutdown(connfd, SHUT_WR);
         close(connfd);
         exit(EXIT_SUCCESS);
       }
@@ -221,8 +222,8 @@ int main(int argc, char **argv)
     }
     exit(EXIT_SUCCESS);
   }
+
   else
-    close(connfd);
   {
     while (1)
     {

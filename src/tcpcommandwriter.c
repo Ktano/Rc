@@ -101,7 +101,7 @@ int TCPconnect(char *servername, int port)
   return fd;
 }
 
-int TCPacceptint(int fd, int port)
+int TCPacceptint(int *fd, int port)
 {
 
   int  newfd;
@@ -109,19 +109,19 @@ int TCPacceptint(int fd, int port)
   struct sockaddr_in serveraddr, clientaddr;
   socklen_t clientlen;
 
-  fd = socket(AF_INET, SOCK_STREAM, 0);
+  *fd = socket(AF_INET, SOCK_STREAM, 0);
 
   memset((void *)&serveraddr, (int)'\0', sizeof(serveraddr));
   serveraddr.sin_family = AF_INET;
   serveraddr.sin_addr.s_addr = htonl(INADDR_ANY);
   serveraddr.sin_port = htons((u_short)port);
 
-  bind(fd, (struct sockaddr *)&serveraddr, sizeof(serveraddr));
+  bind(*fd, (struct sockaddr *)&serveraddr, sizeof(serveraddr));
 
-  listen(fd, 5);
+  listen(*fd, 5);
 
   clientlen = sizeof(clientaddr);
-  newfd = accept(fd, (struct sockaddr *)&clientaddr, &clientlen);
+  newfd = accept(*fd, (struct sockaddr *)&clientaddr, &clientlen);
 
   return newfd;
 }

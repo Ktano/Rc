@@ -91,7 +91,7 @@ int main(int argc, char **argv)
 
   while (1)
   {
-    if ((connfd = TCPacceptint(listenfd,tcpPort)) == -1)
+    if ((connfd = TCPacceptint(&listenfd,tcpPort)) == -1)
       continue;
 
     if ((pid = fork()) == -1)
