@@ -24,11 +24,12 @@ char UDPmessage[UDP_BUFFER_SIZE], servername[BUFFER_MAX], udpReply[UDP_BUFFER_SI
 
 void apanhaSIG();
 int readTCP(int fd);
+int csReply(char* reply);
 
 int main(int argc, char **argv)
 {
-  int i = 0, ptctasks = 0, j = 0, pid;
-  int tcpfd;
+  int i = 0, ptctasks = 0, pid;
+  int listenfd, connfd;
   char *PTC[MAX_PTC];
 
   udpPort = DEFAULT_UDP_PORT;
@@ -68,19 +69,29 @@ int main(int argc, char **argv)
     }
     else if (strlen(argv[i]) == 3)
     {
-      PTC[j] = argv[i];
+      PTC[ptctasks] = argv[i];
       ptctasks++;
     }
   }
 
   if (UDPCommand(UDPmessage, UDP_BUFFER_SIZE, "REG", PTC, ptctasks, tcpPort) == -1)
+  {
+    printf("ERROR: Not possible to register with Central Server");
     exit(EXIT_SUCCESS);
+  }
   if (sendUDP(servername, udpPort, UDPmessage, udpReply, UDP_BUFFER_SIZE) == -1)
-    exit(EXIT_SUCCESS);
+  {
+      printf("ERROR: Not possible to register with Central Server");
+      exit(EXIT_SUCCESS);
+    }
+
+    if(csReply(udpReply)==-1)
+      exit(EXIT_SUCCESS);
+    
 
   while (1)
   {
-    if ((tcpfd = TCPacceptint(tcpPort)) == -1)
+    if ((connfd = TCPacceptint(&listenfd,tcpPort)) == -1)
       continue;
 
     if ((pid = fork()) == -1)
@@ -90,14 +101,16 @@ int main(int argc, char **argv)
     }
     else if (pid == 0)
     {
-      readTCP(tcpfd);
+      close(listenfd);
+      readTCP(connfd);
       /*child*/
-      close(tcpfd);
+      close(connfd);
       exit(EXIT_SUCCESS);
     }
     else
     {
       processes++;
+      close(connfd);
       continue;
     }
   }
@@ -118,6 +131,7 @@ void apanhaSIG()
 
   UDPCommand(UDPmessage, UDP_BUFFER_SIZE, "UNR", NULL, 0, tcpPort);
   sendUDP(servername, udpPort, UDPmessage, udpReply, UDP_BUFFER_SIZE);
+
   for (i = 0; i < processes; i++)
   {
     pid = wait(&status);
@@ -133,6 +147,8 @@ void apanhaSIG()
       exit(EXIT_FAILURE);
     }
   }
+  csReply(udpReply);
+
   exit(EXIT_SUCCESS);
 }
 
@@ -154,7 +170,7 @@ int readTCP(int fd)
   if (strcmp(token, TCP_COMMAND_WORKREQUEST) != 0)
   {
     printf("request:Unexpected request Received\n");
-    tcpCommand(fd, TCP_COMMAND_WORKREQUEST, TCP_ARG_ERR, NULL);
+    tcpCommand(fd, TCP_COMMAND_WORKREQUEST, TCP_ARG_ERR, NULL,0);
     return -1;
   }
 
@@ -168,7 +184,7 @@ int readTCP(int fd)
   if ((fd2 = open(filename, O_CREAT | O_WRONLY, S_IRWXU | S_IRWXG)) == -1)
   {
     printf("ERROR: %s\n", strerror(errno));
-    tcpCommand(fd, TCP_COMMAND_WORKREQUEST, TCP_ARG_ERR, NULL);
+    tcpCommand(fd, TCP_COMMAND_WORKREQUEST, TCP_ARG_ERR, NULL,0);
     return -1;
   }
 
@@ -224,7 +240,7 @@ int readTCP(int fd)
     FILE *tfd;
     if ((wordCount = fileWordCount(filename)) == -1)
     {
-      tcpCommand(fd, TCP_COMMAND_WORKREQUEST, TCP_ARG_ERR, NULL);
+      tcpCommand(fd, TCP_COMMAND_WORKREQUEST, TCP_ARG_ERR, NULL,0);
       return -1;
     }
     tfd = fopen("tmp", "w");
@@ -238,7 +254,7 @@ int readTCP(int fd)
     FILE *tfd;
     if (fileLongestWord(filename, answer, BUFFER_MAX) == -1)
     {
-      tcpCommand(fd, TCP_COMMAND_WORKREQUEST, TCP_ARG_ERR, NULL);
+      tcpCommand(fd, TCP_COMMAND_WORKREQUEST, TCP_ARG_ERR, NULL,0);
       return -1;
     }
 
@@ -251,18 +267,50 @@ int readTCP(int fd)
   {
     if (changeAllChars(filename, "tmp", strcmp(ptc, PTC_UPPER) == 0 ? toupper : tolower) == -1)
     {
-      tcpCommand(fd, TCP_COMMAND_WORKREQUEST, TCP_ARG_ERR, NULL);
+      tcpCommand(fd, TCP_COMMAND_WORKREQUEST, TCP_ARG_ERR, NULL,0);
       return -1;
     }
   }
   else
   {
-    tcpCommand(fd, TCP_COMMAND_WORKREQUEST, TCP_ARG_EOF, NULL);
+    tcpCommand(fd, TCP_COMMAND_WORKREQUEST, TCP_ARG_EOF, NULL,0);
     return -1;
   }
 
   /* final reply and delete data*/
-  tcpCommand(fd, TCP_COMMAND_REPLY, TCP_REPLY_REPORT, "tmp");
+  tcpCommand(fd, TCP_COMMAND_REPLY, TCP_REPLY_REPORT, "tmp",0);
   remove("tmp");
   return 0;
+}
+
+int csReply(char* reply)
+{
+  char*token,buffer[BUFFER_MAX], r=0;
+
+  token=strtok(reply, " ");
+
+  if(strcmp(token,"RAK")==0)
+    sprintf(buffer,"Register: ");
+  else if(strcmp(token,"UAK")==0)
+  {
+    sprintf(buffer,"Unregister: ");
+    r=-1;
+  }
+  else{
+    sprintf(buffer,"ERROR: ");
+    r=-1;
+  }
+
+  token=strtok(NULL, " ");
+
+  if(strcmp(token,"OK\n")==0)
+    strcat(buffer,"Successful\n");
+  else if (strcmp(token,"NOK\n")==0)
+    sprintf(buffer,"unsuccessful\n");
+  else{
+    sprintf(buffer,"Syntax error\n");
+      r=-1;
+    }
+    printf("%s",buffer);
+  return r;
 }

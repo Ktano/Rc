@@ -65,7 +65,7 @@ int main(int argc, char **argv)
       if ((fd = TCPconnect(servername, port)) == -1)
         continue;
 
-      if (tcpCommand(fd, "LST", NULL, NULL) == -1)
+      if (tcpCommand(fd, "LST", NULL, NULL,0) == -1)
         continue;
 
       bytesRead = 0;
@@ -158,7 +158,7 @@ int main(int argc, char **argv)
       if ((fd = TCPconnect(servername, port)) == -1)
         continue;
 
-      if (tcpCommand(fd, "REQ", args[1], args[2]) == -1)
+      if (tcpCommand(fd, "REQ", args[1], args[2],0) == -1)
         continue;
 
       if ((bytesRead = read(fd, buffer, BUFFER_MAX - 1)) == -1)
@@ -310,3 +310,4 @@ int processReport(char *FPT, char *buffer, int fd)
   }
   return 0;
 }
+

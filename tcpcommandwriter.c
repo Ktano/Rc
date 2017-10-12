@@ -29,11 +29,10 @@ int tcpCommand(int tcpfd, char *maincommand, char *argument, char *file, int inc
   {
     stat(file, &buf);
     size = buf.st_size;
-    printf("%d Bytes to transmit\n",size);
     fd2 = open(file, O_RDONLY);
     if (fd2 == -1)
     {
-      printf("ERRO: %s\n", strerror(errno));
+      printf("ERRO: %s", strerror(errno));
       return -1;
     }
   }
@@ -87,11 +86,7 @@ int TCPconnect(char *servername, int port)
   }
 
   /* structure definition to connect to server*/
-  if ((hostptr = gethostbyname(servername)) == NULL)
-  {
-    printf("error: %s\n", strerror(errno));
-    return -1;
-  };
+  hostptr = gethostbyname(servername);
   memset((void *)&serveraddr, (int)'\0', sizeof(serveraddr));
   serveraddr.sin_family = AF_INET;
   serveraddr.sin_addr.s_addr = ((struct in_addr *)(hostptr->h_addr_list[0]))->s_addr;
@@ -106,39 +101,29 @@ int TCPconnect(char *servername, int port)
   return fd;
 }
 
-int TCPacceptint(int *fd, int port)
+int TCPacceptint(int port)
 {
 
-  int  newfd;
+  int fd, newfd;
 
   struct sockaddr_in serveraddr, clientaddr;
   socklen_t clientlen;
 
-  if((*fd = socket(AF_INET, SOCK_STREAM, 0))==-1)
-  {
-    printf("error: %s\n", strerror(errno));
-    return -1;
-  }
+  fd = socket(AF_INET, SOCK_STREAM, 0);
 
   memset((void *)&serveraddr, (int)'\0', sizeof(serveraddr));
   serveraddr.sin_family = AF_INET;
   serveraddr.sin_addr.s_addr = htonl(INADDR_ANY);
   serveraddr.sin_port = htons((u_short)port);
 
-  if(bind(*fd, (struct sockaddr *)&serveraddr, sizeof(serveraddr))==-1)
-  {
-    printf("error: %s\n", strerror(errno));
-    return -1;
-  }
+  bind(fd, (struct sockaddr *)&serveraddr, sizeof(serveraddr));
 
-  if(listen(*fd, 5)==-1){
-    printf("error: %s\n", strerror(errno));
-    return -1;
-  }
+  listen(fd, 5);
 
   clientlen = sizeof(clientaddr);
-  newfd = accept(*fd, (struct sockaddr *)&clientaddr,(socklen_t *)&clientlen);
+  newfd = accept(fd, (struct sockaddr *)&clientaddr, &clientlen);
 
+  close(fd);
   return newfd;
 }
 
@@ -153,10 +138,14 @@ int UDPconnect(int port){
     char writeonfile[30];
     char *FTPs[99];
 
+    sourcefile = open("file_processing_tasks.txt",O_WRONLY);
+    if (sourcefile == -1)
+    {
+        printf("ERRO: %s", strerror(errno));
+        return -1;
+    }
+
     fd = socket(AF_INET,SOCK_DGRAM,0);
-
-
-
 
     memset((void*)&serveraddr,(int)'\0', sizeof(serveraddr));
     serveraddr.sin_family = AF_INET;
@@ -171,42 +160,34 @@ int UDPconnect(int port){
 
     buffer[bytesRead]='\0';
 
-    sourcefile = open("file_processing_tasks.txt",O_CREAT | O_WRONLY, S_IRWXU | S_IRWXG);
-    if (sourcefile == -1)
-    {
-        printf("ERRO: %s", strerror(errno));
-        return -1;
-    }
-
     token = strtok(buffer, PROTOCOL_DIVIDER);
 
 
 
     if(strcmp(token, "REG")==0){
 
-        sprintf(writeonscreen,"+ ");
-        
+        strcat(writeonscreen,"+ ");
 
         token = strtok(NULL, PROTOCOL_DIVIDER);
 
-        while(strlen(token)==3)
+        while(1)
         {
-          if( (strlen(taskDescription(token))>0))
+          if((strlen(token)==3) && (FTPcounter("fpt.h", PTC_WORDCOUNT))
+            && (FTPcounter("fpt.h", PTC_LONGESTWORD))
+            && (FTPcounter("fpt.h", PTC_UPPER))
+            && (FTPcounter("fpt.h", PTC_LOWER)))
           {
             strcat(writeonscreen, token);
-            strcat(writeonscreen, " ");
-            FTPs[counter]= token;
+            strcpy(FTPs[counter], token);
             counter++;
             token = strtok(NULL, PROTOCOL_DIVIDER);
-          }
-          else{
+          }else{
             sendto(fd, "RAK NOK\n", 8, 0, (struct sockaddr*)&clientaddr,addrlen);
-            close(sourcefile);
-            close(fd);
             return -1;
           }
         }
 
+        strcat(ip_and_port, " ");
         strcat(ip_and_port, token);
         token = strtok(NULL, PROTOCOL_DIVIDER);
         strcat(ip_and_port, " ");
@@ -216,11 +197,11 @@ int UDPconnect(int port){
 
         strcat(writeonscreen, token);
         strcat(writeonscreen, "\n");
-        printf("%s",writeonscreen);
+
 
         for(i = 0; FTPs[i] != NULL; i++)
         {
-          sprintf(writeonfile,"+%s ", FTPs[i]);
+          strcpy(writeonfile, FTPs[i]);
           strcat(writeonfile, ip_and_port);
           write(sourcefile, writeonfile, strlen(writeonfile));
           memset(writeonfile, 0, sizeof(writeonfile));
@@ -228,19 +209,12 @@ int UDPconnect(int port){
 
         sendto(fd, "RAK OK\n", 8, 0, (struct sockaddr*)&clientaddr,addrlen);
 
-    }
-    else if (strcmp(token, "UNR")==0){
-
-    }
-    else
-    {
+    }else{
       sendto(fd, "RAK ERR\n", 9, 0, (struct sockaddr*)&clientaddr,addrlen);
-      close(sourcefile);
-      close(fd);
       return -1;
-    }
-    close(sourcefile);
-    close(fd);
+    }/*else if (strcmp(token, "UNR")==0){
+
+    }*/
     return 0;
 }
 
@@ -351,6 +325,7 @@ int filesplitter(char *file, int servers, int filecounter)
 
   char line[128], partition[9];
   int files = 1, counter = 1;
+  char output_directory[14] = "output_files/";
 
   int ch = 0, lines = 1;
 
@@ -364,7 +339,7 @@ int filesplitter(char *file, int servers, int filecounter)
   }
   rewind(sourcefile);
 
-  sprintf(partition, "%d%02d.txt", filecounter, files);
+  sprintf(partition, "%s%d%02d.txt", output_directory, filecounter, files);
   partitionfile = fopen(partition, "w");
 
   while (fgets(line, sizeof line, sourcefile) != NULL)
@@ -374,7 +349,7 @@ int filesplitter(char *file, int servers, int filecounter)
       fclose(partitionfile);
       counter = 1;
       files++;
-      sprintf(partition, "%d%02d.txt", filecounter, files);
+      sprintf(partition, "%s%d%02d.txt", output_directory, filecounter, files);
       partitionfile = fopen(partition, "w");
     }
     counter++;
@@ -384,8 +359,6 @@ int filesplitter(char *file, int servers, int filecounter)
   return 0;
 }
 
-
-/* Counts the number of servers that can process the ftp task*/
 int FTPcounter(char *filename, char *ftp)
 {
   FILE *fp;
@@ -415,7 +388,6 @@ int FTPcounter(char *filename, char *ftp)
     if (same == 1)
     {
       counter++;
-      same = 0;
     }
   }
 
@@ -492,141 +464,3 @@ void LSTcommand(char *filename, char *requestedFPT)
   fclose(fp);
 
 }
-
-
-int UDPCommand(char *buffer, int bufferlen, char *maincommand, char **PTC, int lenghtPTC, int port)
-{
-  int total = 0, i;
-  struct hostent *h;
-  struct in_addr *a;
-  char servername[BUFFER_MAX], *addr, cport[BUFFER_MAX];
-
-  strncpy(buffer, maincommand, BUFFER_MAX);
-  total = strlen(buffer);
-  if (PTC != NULL)
-  {
-    for (i = 0; i < lenghtPTC; i++)
-    {
-      if ((total += strlen(PTC[i]) + 1) < BUFFER_MAX)
-      {
-        strcat(buffer, " ");
-        strcat(buffer, PTC[i]);
-      }
-      else
-      {
-        printf("ERROR: buffer size is too small");
-        return -1;
-      }
-    }
-  }
-
-  if (port != 0)
-  {
-    if (gethostname(servername, BUFFER_MAX) == -1)
-    {
-      printf("error getting local host name: %s\n", strerror(errno));
-      return -1;
-    }
-    if ((h = gethostbyname(servername)) == NULL)
-    {
-      printf("error getting host: %s\n", strerror(errno));
-      return -1;
-    }
-
-    a = (struct in_addr *)h->h_addr_list[0];
-    addr = inet_ntoa(*a);
-    sprintf(cport,"%d",port);
-    if ((total += strlen(addr) + strlen(cport) + 2) < BUFFER_MAX)
-    {
-      strcat(buffer, " ");
-      strcat(buffer, addr);
-      strcat(buffer, " ");
-      strcat(buffer, cport);
-    }
-    else
-    {
-      printf("ERROR: buffer size is too small");
-      return -1;
-    }
-  }
-
-  if ((total += 2) < BUFFER_MAX)
-    strcat(buffer, "\n");
-  else
-  {
-    printf("ERROR: buffer size is too small");
-    return -1;
-  }
-  return total;
-}
-
-int sendUDP(char *servername,int UDPport,char *msg, char* reply,int size){
-  int bytestoWrite, fd,addrlen,n;
-  struct hostent *hostptr;
-  struct sockaddr_in serveraddr;
-
-  bytestoWrite=strlen(msg);
-
-  if((fd=socket(AF_INET,SOCK_DGRAM,0))==-1){
-    printf("ERROR: %s",strerror(errno));
-    return -1;
-  } 
-  if((hostptr=gethostbyname(servername))==NULL){
-    printf("ERROR: %s",strerror(errno));
-    return -1;
-  } 
-  memset((void*)&serveraddr,(int)'\0',sizeof(serveraddr));
-  serveraddr.sin_family = AF_INET;
-  serveraddr.sin_addr.s_addr = ((struct in_addr *)(hostptr->h_addr_list[0]))->s_addr;
-  serveraddr.sin_port = htons((u_short)UDPport);
-  addrlen = sizeof(serveraddr);
-
-  sendto(fd,msg,bytestoWrite,0,(struct sockaddr*)&serveraddr,(socklen_t)addrlen);
-
-  addrlen=sizeof(serveraddr);
-  n=recvfrom(fd,reply,size,0,(struct sockaddr*)&serveraddr,(socklen_t*)&addrlen);
-  reply[n]='\0';
-  close(fd);
-  return n;
-}
-
-int filespliter(char *file) {
-
-	FILE *sourcefile;
-	FILE *partitionfile;
-
-	char line[128], partition[9];
-	int files=1, counter=1;
-	int wctservers = 2;
-	int ch=0, lines=1;
-
-	sourcefile = fopen(file,"r");
-
-
-	while(!feof(sourcefile)){
-	  ch = fgetc(sourcefile);
-	  if(ch == '\n')
-	    lines++;
-	}
-	rewind(sourcefile);
-
-	printf("LINES: %d\n", lines);
-
-	sprintf(partition, "%s00%d.txt", sourcefile, files);
-	partitionfile = fopen(partition, "w");
-
-	while (fgets(line, sizeof line, sourcefile)!=NULL) {
-		if ((lines % counter) == wctservers) {
-			fclose(partitionfile);
-			counter = 1;
-			files++;
-			sprintf(partition, "%s00%d.txt", sourcefile, files);
-			partitionfile = fopen(partition, "w");
-		}
-		counter++;
-		fprintf(partitionfile,"%s\n", line);
-	}
-	fclose(sourcefile);
-	return 0;
-}
-
