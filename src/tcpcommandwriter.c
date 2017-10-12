@@ -399,9 +399,11 @@ int filesplitter(char *file, int servers, int filecounter)
   partitionfile = fopen(partition, "w");
 
   linesperfile = lines / servers;
-  while (ch = fgetc(sourcefile) != NULL)
+
+  while (!feof(sourcefile))
   {
-    if (linesperfile < counter) && files<servers)
+    fgetc(sourcefile);
+    if (linesperfile < counter && files < servers)
       {
         fclose(partitionfile);
         counter = 1;
@@ -412,6 +414,7 @@ int filesplitter(char *file, int servers, int filecounter)
     if (ch == '\n' || ch == '\r')
       counter++;
     fputc(ch, partitionfile);
+    
   }
   fclose(sourcefile);
   return 0;
