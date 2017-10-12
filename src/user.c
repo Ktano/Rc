@@ -297,7 +297,7 @@ int processReport(char *FPT, char *buffer, int fd)
     }
     buffer[bytesRead] = '\0';
 
-    if (bytesRead <= bytesToRead)
+    if (bytesRead <= bytesToRead+1)
     {
       printf("%s", buffer);
       bytesToRead -= bytesRead;
