@@ -1,6 +1,9 @@
 #ifndef TCPCOMMANDWRITER_H
 #define TCPCOMMANDWRITER_H
 
+#include <sys/socket.h>
+#include <netinet/in.h>
+
 #define TCP_HEADER 7 /*numero de bytes que constituem o Header*/
 #define TCP_COMMAND_LIST "LST"
 #define TCP_COMMAND_PROCTASK "FPT"
@@ -13,9 +16,11 @@
 #define PROTOCOL_DIVIDER " \n"
 #define FPT_SIZE 3
 
+
 int tcpCommand(int tcpfd, char *maincommand, char *argument, char *file, int include_file_name);
 int TCPconnect(char *servername, int port);
-int TCPacceptint(int *fd, int port);
+int TCPacceptint(int fd, struct sockaddr_in clientaddr);
+int TCPlisten(int port);
 int UDPconnect(int port);
 int filesplitter(char* file, int servers, int filecounter);
 int UDPCommand(char* buffer,int bufferlen, char *maincommand, char **PTC,int lenghtPTC, int port);

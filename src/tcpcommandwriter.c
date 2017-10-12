@@ -528,7 +528,7 @@ void lineDeleter(char* linetorem)
 {
   char* inFileName = "file_processing_tasks.txt";
   char* outFileName = "tmp.txt";
-  char* linetorem = "WCT 192.168.1.2 58000\n";
+  /*char* linetorem = "WCT 192.168.1.2 58000\n";*/
   FILE* inFile = fopen(inFileName, "r");
   FILE* outFile = fopen(outFileName, "w+");
   char *line = NULL;
