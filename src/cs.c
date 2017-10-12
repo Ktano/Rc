@@ -125,10 +125,10 @@ int main(int argc, char **argv)
 
           bytesToRead = atoi(token);
 
-          snprintf(filename, 5, "%d", getpid());
+          snprintf(filename, 5, "input_files/%05d", getpid());
           strcat(filename, ".txt");
 
-          fp = open(filename, (O_CREAT | O_WRONLY));
+          fp = open(filename, O_CREAT | O_WRONLY, S_IRWXU | S_IRWXG);
 
           token = strtok(buffer, "");
           write(fp, token, strlen(token));
@@ -148,12 +148,13 @@ int main(int argc, char **argv)
           working_servers = FTPcounter("file_processing_tasks.txt", requestedFPT);
           filesplitter(filename, working_servers, getpid());
           fd_position = connectToWS(filename, requestedFPT, fd_wsservers, working_servers);
-
+          if(working_servers==0){
+            write(connfd,"REP EOF\n",8);
+          }
           for (i = 0; i < fd_position; i++)
           {
 
-            snprintf(fileToWs, 12, "%d%02d", getpid(), fileToWsCounter);
-            strcat(fileToWs, ".txt");
+            sprintf(fileToWs, "input_files/%05d%03d.txt", getpid(), fileToWsCounter);
             fileToWsCounter++;
 
             tcpCommand(fd_wsservers[i], "WRQ", requestedFPT, fileToWs, 1);

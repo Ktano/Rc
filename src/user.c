@@ -69,9 +69,9 @@ int main(int argc, char **argv)
         continue;
 
       bytesRead = 0;
-      if ((bytesRead = read(fd, buffer, TCP_HEADER)) == -1)
+      if ((bytesRead = read(fd, buffer, TCP_HEADER)) <= 0)
       {
-        printf("error: %s\n", strerror(errno));
+        printf("error: no data received from Central Server\n");
         close(fd);
         continue;
       }
@@ -161,9 +161,9 @@ int main(int argc, char **argv)
       if (tcpCommand(fd, "REQ", args[1], args[2],0) == -1)
         continue;
 
-      if ((bytesRead = read(fd, buffer, BUFFER_MAX - 1)) == -1)
+      if ((bytesRead = read(fd, buffer, BUFFER_MAX - 1)) <= 0)
       {
-        printf("error: %s\n", strerror(errno));
+        printf("error: no data received from Central Server\n");
         close(fd);
         continue;
       }

@@ -430,7 +430,7 @@ int FTPcounter(char *filename, char *ftp)
 
   while (EOF != (ch = fgetc(fp)))
   {
-    if (ch == '+')
+    if (ch == '\n')
     {
       same = 1;
       for (i = 0; i < ftplen; i++)
