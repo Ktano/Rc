@@ -22,7 +22,7 @@ int main(int argc, char **argv)
   int listenfd,connfd = 0, pid, tcp_pid, bytesRead, working_servers, servers = 0, fp;
   char buffer[BUFFER_MAX];
   int fd_wsservers[10], fd_position = 0;
-  char requestedFPT[4], filename[10], fileToWs[BUFFER_MAX];
+  char requestedFPT[4], filename[BUFFER_MAX], fileToWs[BUFFER_MAX];
   int bytesToRead, fileToWsCounter = 1, i;
   char *token;
   char response[BUFFER_MAX], tasks[BUFFER_MAX];
@@ -125,8 +125,7 @@ int main(int argc, char **argv)
 
           bytesToRead = atoi(token);
 
-          snprintf(filename, 5, "input_files/%05d", getpid());
-          strcat(filename, ".txt");
+          sprintf(filename, "input_files/%05d.txt", getpid());
 
           fp = open(filename, O_CREAT | O_WRONLY, S_IRWXU | S_IRWXG);
 
