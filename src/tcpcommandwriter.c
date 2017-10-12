@@ -20,7 +20,8 @@
 
 #define BUFFER_MAX 128
 
-int tcpCommand(int tcpfd, char *maincommand, char *argument, char *file, int include_file_name){
+int tcpCommand(int tcpfd, char *maincommand, char *argument, char *file, int include_file_name)
+{
   char buffer[128];
   struct stat buf;
   int fd2, size = 0, bytesRead;
@@ -49,12 +50,12 @@ int tcpCommand(int tcpfd, char *maincommand, char *argument, char *file, int inc
     write(tcpfd, buffer, strlen(buffer));
     return 0;
   }
-  else if(include_file_name == 0)
+  else if (include_file_name == 0)
   {
     sprintf(buffer /*,strlen(maincommand)+strlen(argument)+4*/, "%s %s %d ", maincommand, argument, size);
     write(tcpfd, buffer, strlen(buffer));
   }
-  else if(include_file_name == 1)
+  else if (include_file_name == 1)
   {
     sprintf(buffer /*,strlen(maincommand)+strlen(argument)+4*/, "%s %s %s %d ", maincommand, argument, file, size);
     write(tcpfd, buffer, strlen(buffer));
@@ -86,7 +87,8 @@ int TCPconnect(char *servername, int port)
   }
 
   /* structure definition to connect to server*/
-  if((hostptr = gethostbyname(servername))==NULL){
+  if ((hostptr = gethostbyname(servername)) == NULL)
+  {
     printf("error: %s\n", strerror(errno));
     return -1;
   }
@@ -116,7 +118,7 @@ int TCPlisten(int port)
   serveraddr.sin_addr.s_addr = htonl(INADDR_ANY);
   serveraddr.sin_port = htons((u_short)port);
 
-  bind(fd, (struct sockaddr *) &serveraddr, sizeof(serveraddr));
+  bind(fd, (struct sockaddr *)&serveraddr, sizeof(serveraddr));
 
   listen(fd, 5);
 
@@ -125,7 +127,7 @@ int TCPlisten(int port)
 
 int TCPacceptint(int fd, struct sockaddr_in clientaddr)
 {
-  int  newfd;
+  int newfd;
   socklen_t clientlen;
 
   clientlen = sizeof(clientaddr);
@@ -135,144 +137,141 @@ int TCPacceptint(int fd, struct sockaddr_in clientaddr)
   return newfd;
 }
 
-int UDPconnect(int port){
+int UDPconnect(int port)
+{
 
-    int fd, sourcefile, bytesRead = 0, i, counter = 0;
-    char *token;
-    struct sockaddr_in serveraddr, clientaddr;
-    socklen_t addrlen;
-    char buffer[5000], writeonscreen[350];
-    char ip_and_port[25];
-    char writeonfile[30];
-    char *FTPs[99];
-    char *linesToDel[99];
+  int fd, sourcefile, bytesRead = 0, i, counter = 0;
+  char *token;
+  struct sockaddr_in serveraddr, clientaddr;
+  socklen_t addrlen;
+  char buffer[5000], writeonscreen[350];
+  char ip_and_port[25];
+  char writeonfile[30];
+  char *FTPs[99];
+  char *linesToDel[99];
 
-    fd = socket(AF_INET,SOCK_DGRAM,0);
+  fd = socket(AF_INET, SOCK_DGRAM, 0);
 
+  memset((void *)&serveraddr, (int)'\0', sizeof(serveraddr));
+  serveraddr.sin_family = AF_INET;
+  serveraddr.sin_addr.s_addr = htonl(INADDR_ANY);
+  serveraddr.sin_port = htons((u_short)port);
 
+  bind(fd, (struct sockaddr *)&serveraddr, sizeof(serveraddr));
 
+  addrlen = sizeof(clientaddr);
 
-    memset((void*)&serveraddr,(int)'\0', sizeof(serveraddr));
-    serveraddr.sin_family = AF_INET;
-    serveraddr.sin_addr.s_addr = htonl(INADDR_ANY);
-    serveraddr.sin_port = htons((u_short)port);
+  bytesRead = recvfrom(fd, buffer, sizeof(buffer), 0, (struct sockaddr *)&clientaddr, &addrlen);
 
-    bind(fd,(struct sockaddr*)&serveraddr,sizeof(serveraddr));
+  buffer[bytesRead] = '\0';
 
-    addrlen = sizeof(clientaddr);
+  sourcefile = open("file_processing_tasks.txt", O_CREAT | O_WRONLY, S_IRWXU | S_IRWXG);
+  if (sourcefile == -1)
+  {
+    printf("ERRO: %s", strerror(errno));
+    return -1;
+  }
 
-    bytesRead = recvfrom(fd, buffer, sizeof(buffer), 0, (struct sockaddr*)&clientaddr, &addrlen);
+  token = strtok(buffer, PROTOCOL_DIVIDER);
 
-    buffer[bytesRead]='\0';
+  if (strcmp(token, "REG") == 0)
+  {
 
-    sourcefile = open("file_processing_tasks.txt",O_CREAT | O_WRONLY, S_IRWXU | S_IRWXG);
-    if (sourcefile == -1)
+    sprintf(writeonscreen, "+ ");
+
+    token = strtok(NULL, PROTOCOL_DIVIDER);
+
+    while (strlen(token) == 3)
     {
-        printf("ERRO: %s", strerror(errno));
-        return -1;
-    }
-
-    token = strtok(buffer, PROTOCOL_DIVIDER);
-
-
-
-    if(strcmp(token, "REG")==0){
-
-        sprintf(writeonscreen,"+ ");
-
-
-        token = strtok(NULL, PROTOCOL_DIVIDER);
-
-        while(strlen(token)==3)
-        {
-          if( (strlen(taskDescription(token))>0))
-          {
-            strcat(writeonscreen, token);
-            strcat(writeonscreen, " ");
-            FTPs[counter]= token;
-            counter++;
-            token = strtok(NULL, PROTOCOL_DIVIDER);
-          }
-          else{
-            sendto(fd, "RAK NOK\n", 8, 0, (struct sockaddr*)&clientaddr,addrlen);
-            close(sourcefile);
-            close(fd);
-            return -1;
-          }
-        }
-
-        strcat(ip_and_port, token);
-        token = strtok(NULL, PROTOCOL_DIVIDER);
-        strcat(ip_and_port, " ");
-
-        strcat(ip_and_port, token);
-        strcat(ip_and_port, "\n");
-
+      if ((strlen(taskDescription(token)) > 0))
+      {
         strcat(writeonscreen, token);
-        strcat(writeonscreen, "\n");
-        printf("%s",writeonscreen);
-
-        for(i = 0; FTPs[i] != NULL; i++)
-        {
-          sprintf(writeonfile,"%s ", FTPs[i]);
-          strcat(writeonfile, ip_and_port);
-          write(sourcefile, writeonfile, strlen(writeonfile));
-          memset(writeonfile, 0, sizeof(writeonfile));
-        }
-
-        sendto(fd, "RAK OK\n", 8, 0, (struct sockaddr*)&clientaddr,addrlen);
-
-    }
-    else if (strcmp(token, "UNR")==0){
-
-      sprintf(writeonscreen,"- ");
-
-      token = strtok(NULL, PROTOCOL_DIVIDER);
-
-      while(strlen(token)==3)
-      {
-        if( (strlen(taskDescription(token))>0))
-        {
-          strcat(writeonscreen, token);
-          strcat(writeonscreen, " ");
-          linesToDel[counter] = token;
-          counter++;
-          token = strtok(NULL, PROTOCOL_DIVIDER);
-        }
-        else{
-          sendto(fd, "UAK NOK\n", 8, 0, (struct sockaddr*)&clientaddr,addrlen);
-          close(sourcefile);
-          close(fd);
-          return -1;
-        }
+        strcat(writeonscreen, " ");
+        FTPs[counter] = token;
+        counter++;
+        token = strtok(NULL, PROTOCOL_DIVIDER);
       }
-
-      strcat(ip_and_port, token);
-      token = strtok(NULL, PROTOCOL_DIVIDER);
-      strcat(ip_and_port, " ");
-      strcat(ip_and_port, token);
-      strcat(ip_and_port, "\n");
-
-      strcat(writeonscreen, token);
-      strcat(writeonscreen, "\n");
-      printf("%s",writeonscreen);
-
-
-      for(i = 0; FTPs[i] != NULL; i++)
+      else
       {
-        strcat(linesToDel[i], ip_and_port);
+        sendto(fd, "RAK NOK\n", 8, 0, (struct sockaddr *)&clientaddr, addrlen);
+        close(sourcefile);
+        close(fd);
+        return -1;
       }
     }
-    else
+
+    strcat(ip_and_port, token);
+    token = strtok(NULL, PROTOCOL_DIVIDER);
+    strcat(ip_and_port, " ");
+
+    strcat(ip_and_port, token);
+    strcat(ip_and_port, "\n");
+
+    strcat(writeonscreen, token);
+    strcat(writeonscreen, "\n");
+    printf("%s", writeonscreen);
+
+    for (i = 0; FTPs[i] != NULL; i++)
     {
-      sendto(fd, "RAK ERR\n", 9, 0, (struct sockaddr*)&clientaddr,addrlen);
-      close(sourcefile);
-      close(fd);
-      return -1;
+      sprintf(writeonfile, "%s ", FTPs[i]);
+      strcat(writeonfile, ip_and_port);
+      write(sourcefile, writeonfile, strlen(writeonfile));
+      memset(writeonfile, 0, sizeof(writeonfile));
     }
+
+    sendto(fd, "RAK OK\n", 8, 0, (struct sockaddr *)&clientaddr, addrlen);
+  }
+  else if (strcmp(token, "UNR") == 0)
+  {
+
+    sprintf(writeonscreen, "- ");
+
+    token = strtok(NULL, PROTOCOL_DIVIDER);
+
+    while (strlen(token) == 3)
+    {
+      if ((strlen(taskDescription(token)) > 0))
+      {
+        strcat(writeonscreen, token);
+        strcat(writeonscreen, " ");
+        linesToDel[counter] = token;
+        counter++;
+        token = strtok(NULL, PROTOCOL_DIVIDER);
+      }
+      else
+      {
+        sendto(fd, "UAK NOK\n", 8, 0, (struct sockaddr *)&clientaddr, addrlen);
+        close(sourcefile);
+        close(fd);
+        return -1;
+      }
+    }
+
+    strcat(ip_and_port, token);
+    token = strtok(NULL, PROTOCOL_DIVIDER);
+    strcat(ip_and_port, " ");
+    strcat(ip_and_port, token);
+    strcat(ip_and_port, "\n");
+
+    strcat(writeonscreen, token);
+    strcat(writeonscreen, "\n");
+    printf("%s", writeonscreen);
+
+    for (i = 0; FTPs[i] != NULL; i++)
+    {
+      strcat(linesToDel[i], ip_and_port);
+    }
+  }
+  else
+  {
+    sendto(fd, "RAK ERR\n", 9, 0, (struct sockaddr *)&clientaddr, addrlen);
     close(sourcefile);
     close(fd);
-    return 0;
+    return -1;
+  }
+  close(sourcefile);
+  close(fd);
+  return 0;
 }
 
 int UDPCommand(char *buffer, int bufferlen, char *maincommand, char **PTC, int lenghtPTC, int port)
@@ -382,6 +381,7 @@ int filesplitter(char *file, int servers, int filecounter)
 
   char line[128], partition[9];
   int files = 1, counter = 1;
+  int linesperfile;
 
   int ch = 0, lines = 1;
 
@@ -390,31 +390,30 @@ int filesplitter(char *file, int servers, int filecounter)
   while (!feof(sourcefile))
   {
     ch = fgetc(sourcefile);
-    if (ch == '\n')
+    if (ch == '\n' || ch == '\r')
       lines++;
   }
   rewind(sourcefile);
 
-  sprintf(partition, "%d%02d.txt", filecounter, files);
+  sprintf(partition, "input_files/%05d%02d.txt", filecounter, files);
   partitionfile = fopen(partition, "w");
 
-  while (fgets(line, sizeof line, sourcefile) != NULL)
+  linesperfile = lines / servers while (fgets(line, sizeof line, sourcefile) != NULL)
   {
-    if ((lines % counter) == servers)
-    {
-      fclose(partitionfile);
-      counter = 1;
-      files++;
-      sprintf(partition, "%d%02d.txt", filecounter, files);
-      partitionfile = fopen(partition, "w");
-    }
+    if (linesperfile < counter) && files<servers)
+      {
+        fclose(partitionfile);
+        counter = 1;
+        files++;
+        sprintf(partition, "input_files/%05d%02d.txt", filecounter, files);
+        partitionfile = fopen(partition, "w");
+      }
     counter++;
-    fprintf(partitionfile, "%s\n", line);
+    fprintf(partitionfile, "%s", line);
   }
   fclose(sourcefile);
   return 0;
 }
-
 
 /* Counts the number of servers that can process the ftp task*/
 int FTPcounter(char *filename, char *ftp)
@@ -502,7 +501,7 @@ void LSTcommand(char *filename, char *requestedFPT)
   if (fp == NULL)
     exit(EXIT_FAILURE);
 
-  printf("%s:",requestedFPT);
+  printf("%s:", requestedFPT);
 
   while ((read = getline(&line, &len, fp)) != -1)
   {
@@ -511,49 +510,53 @@ void LSTcommand(char *filename, char *requestedFPT)
     if (strcmp(token, requestedFPT) == 0)
     {
       token = strtok(NULL, "");
-      if(counter==1){
-        printf(" %s\n",token);
-      }else{
-        printf("     %s\n",token);
+      if (counter == 1)
+      {
+        printf(" %s\n", token);
+      }
+      else
+      {
+        printf("     %s\n", token);
       }
     }
-
   }
 
   fclose(fp);
-
 }
 
-void lineDeleter(char* linetorem)
+void lineDeleter(char *linetorem)
 {
-  char* inFileName = "file_processing_tasks.txt";
-  char* outFileName = "tmp.txt";
+  char *inFileName = "file_processing_tasks.txt";
+  char *outFileName = "tmp.txt";
   /*char* linetorem = "WCT 192.168.1.2 58000\n";*/
-  FILE* inFile = fopen(inFileName, "r");
-  FILE* outFile = fopen(outFileName, "w+");
+  FILE *inFile = fopen(inFileName, "r");
+  FILE *outFile = fopen(outFileName, "w+");
   char *line = NULL;
   size_t len = 0;
   ssize_t read;
   int ret;
-  if( inFile == NULL )
+  if (inFile == NULL)
   {
-      printf("Open Error");
+    printf("Open Error");
   }
 
   while ((read = getline(&line, &len, inFile)) != -1)
   {
-    if(strcmp(line, linetorem) != 0)
+    if (strcmp(line, linetorem) != 0)
     {
-        fprintf(outFile, "%s", line);
+      fprintf(outFile, "%s", line);
     }
   }
   fclose(inFile);
   fclose(outFile);
   remove("file_processing_tasks.txt");
-   ret = rename("file_processing_tasks.txt", "tmp.txt");
-   if(ret == 0) {
-      printf("File renamed successfully");
-   } else {
-      printf("Error: unable to rename the file");
-   }
+  ret = rename("file_processing_tasks.txt", "tmp.txt");
+  if (ret == 0)
+  {
+    printf("File renamed successfully");
+  }
+  else
+  {
+    printf("Error: unable to rename the file");
+  }
 }
