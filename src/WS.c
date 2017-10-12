@@ -31,6 +31,7 @@ int main(int argc, char **argv)
   int i = 0, ptctasks = 0, pid;
   int listenfd, connfd;
   char *PTC[MAX_PTC];
+  struct sockaddr_in clientaddr;
 
   udpPort = DEFAULT_UDP_PORT;
   tcpPort = DEFAULT_TCP_PORT;
@@ -38,7 +39,7 @@ int main(int argc, char **argv)
   /*cria vector para tratamento do sinal SIGINT*/
   if (signal(SIGINT, apanhaSIG) == SIG_ERR)
   {
-    perror("ERRO ao criar tratamento de sinal");
+    perror("ERRO ao criar tratamento de sinal\n");
     exit(EXIT_SUCCESS);
   }
 
@@ -76,27 +77,32 @@ int main(int argc, char **argv)
 
   if (UDPCommand(UDPmessage, UDP_BUFFER_SIZE, "REG", PTC, ptctasks, tcpPort) == -1)
   {
-    printf("ERROR: Not possible to register with Central Server");
+    printf("ERROR: Not possible to register with Central Server\n");
     exit(EXIT_SUCCESS);
   }
   if (sendUDP(servername, udpPort, UDPmessage, udpReply, UDP_BUFFER_SIZE) == -1)
   {
-      printf("ERROR: Not possible to register with Central Server");
+      printf("ERROR: Not possible to register with Central Server\n");
       exit(EXIT_SUCCESS);
     }
 
     if(csReply(udpReply)==-1)
       exit(EXIT_SUCCESS);
-    
+
+  if ((listenfd = TCPlisten(tcpPort)) == -1)
+    printf ("ERROR: %s",strerror(errno));
 
   while (1)
   {
-    if ((connfd = TCPacceptint(&listenfd,tcpPort)) == -1)
+    if ((connfd = TCPacceptint(listenfd,clientaddr)) == -1)
+    {
+      printf ("ERROR: %s\n",strerror(errno));
       continue;
+    }
 
     if ((pid = fork()) == -1)
     {
-      printf("ERROR: %s", strerror(errno));
+      printf("ERROR: %s\n", strerror(errno));
       continue;
     }
     else if (pid == 0)
@@ -125,7 +131,7 @@ void apanhaSIG()
   /*cria vector para tratamento do sinal SIGINT*/
   if (signal(SIGINT, apanhaSIG) == SIG_ERR)
   {
-    perror("ERRO ao criar tratamento de sinal");
+    perror("ERRO ao criar tratamento de sinal\n");
     exit(EXIT_FAILURE);
   }
 
@@ -143,7 +149,7 @@ void apanhaSIG()
         i--;
         continue;
       }
-      printf("ERROR: %s", strerror(errno));
+      printf("ERROR: %s\n", strerror(errno));
       exit(EXIT_FAILURE);
     }
   }
@@ -192,7 +198,7 @@ int readTCP(int fd)
   token = strtok(NULL, PROTOCOL_DIVIDER);
   if ((bytesToRead = atoi(token)) == 0)
   {
-    printf("ERROR: Unexpected request Received");
+    printf("ERROR: Unexpected request Received\n");
     return -1;
   }
 

@@ -86,7 +86,10 @@ int TCPconnect(char *servername, int port)
   }
 
   /* structure definition to connect to server*/
-  hostptr = gethostbyname(servername);
+  if((hostptr = gethostbyname(servername))==NULL){
+    printf("error: %s\n", strerror(errno));
+    return -1;
+  }
   memset((void *)&serveraddr, (int)'\0', sizeof(serveraddr));
   serveraddr.sin_family = AF_INET;
   serveraddr.sin_addr.s_addr = ((struct in_addr *)(hostptr->h_addr_list[0]))->s_addr;
@@ -101,27 +104,33 @@ int TCPconnect(char *servername, int port)
   return fd;
 }
 
-int TCPacceptint(int *fd, int port)
+int TCPlisten(int port)
 {
+  int fd;
+  struct sockaddr_in serveraddr;
 
-  int  newfd;
-
-  struct sockaddr_in serveraddr, clientaddr;
-  socklen_t clientlen;
-
-  *fd = socket(AF_INET, SOCK_STREAM, 0);
+  fd = socket(AF_INET, SOCK_STREAM, 0);
 
   memset((void *)&serveraddr, (int)'\0', sizeof(serveraddr));
   serveraddr.sin_family = AF_INET;
   serveraddr.sin_addr.s_addr = htonl(INADDR_ANY);
   serveraddr.sin_port = htons((u_short)port);
 
-  bind(*fd, (struct sockaddr *)&serveraddr, sizeof(serveraddr));
+  bind(fd, (struct sockaddr *) &serveraddr, sizeof(serveraddr));
 
-  listen(*fd, 5);
+  listen(fd, 5);
+
+  return fd;
+}
+
+int TCPacceptint(int fd, struct sockaddr_in clientaddr)
+{
+  int  newfd;
+  socklen_t clientlen;
 
   clientlen = sizeof(clientaddr);
-  newfd = accept(*fd, (struct sockaddr *)&clientaddr, &clientlen);
+
+  newfd = accept(fd, (struct sockaddr *)&clientaddr, &clientlen);
 
   return newfd;
 }
@@ -136,6 +145,7 @@ int UDPconnect(int port){
     char ip_and_port[25];
     char writeonfile[30];
     char *FTPs[99];
+    char *linesToDel[99];
 
     fd = socket(AF_INET,SOCK_DGRAM,0);
 
@@ -169,7 +179,7 @@ int UDPconnect(int port){
     if(strcmp(token, "REG")==0){
 
         sprintf(writeonscreen,"+ ");
-        
+
 
         token = strtok(NULL, PROTOCOL_DIVIDER);
 
@@ -204,7 +214,7 @@ int UDPconnect(int port){
 
         for(i = 0; FTPs[i] != NULL; i++)
         {
-          sprintf(writeonfile,"+%s ", FTPs[i]);
+          sprintf(writeonfile,"%s ", FTPs[i]);
           strcat(writeonfile, ip_and_port);
           write(sourcefile, writeonfile, strlen(writeonfile));
           memset(writeonfile, 0, sizeof(writeonfile));
@@ -215,6 +225,43 @@ int UDPconnect(int port){
     }
     else if (strcmp(token, "UNR")==0){
 
+      sprintf(writeonscreen,"- ");
+
+      token = strtok(NULL, PROTOCOL_DIVIDER);
+
+      while(strlen(token)==3)
+      {
+        if( (strlen(taskDescription(token))>0))
+        {
+          strcat(writeonscreen, token);
+          strcat(writeonscreen, " ");
+          linesToDel[counter] = token;
+          counter++;
+          token = strtok(NULL, PROTOCOL_DIVIDER);
+        }
+        else{
+          sendto(fd, "UAK NOK\n", 8, 0, (struct sockaddr*)&clientaddr,addrlen);
+          close(sourcefile);
+          close(fd);
+          return -1;
+        }
+      }
+
+      strcat(ip_and_port, token);
+      token = strtok(NULL, PROTOCOL_DIVIDER);
+      strcat(ip_and_port, " ");
+      strcat(ip_and_port, token);
+      strcat(ip_and_port, "\n");
+
+      strcat(writeonscreen, token);
+      strcat(writeonscreen, "\n");
+      printf("%s",writeonscreen);
+
+
+      for(i = 0; FTPs[i] != NULL; i++)
+      {
+        strcat(linesToDel[i], ip_and_port);
+      }
     }
     else
     {
@@ -475,4 +522,38 @@ void LSTcommand(char *filename, char *requestedFPT)
 
   fclose(fp);
 
+}
+
+void lineDeleter(char* linetorem)
+{
+  char* inFileName = "file_processing_tasks.txt";
+  char* outFileName = "tmp.txt";
+  char* linetorem = "WCT 192.168.1.2 58000\n";
+  FILE* inFile = fopen(inFileName, "r");
+  FILE* outFile = fopen(outFileName, "w+");
+  char *line = NULL;
+  size_t len = 0;
+  ssize_t read;
+  int ret;
+  if( inFile == NULL )
+  {
+      printf("Open Error");
+  }
+
+  while ((read = getline(&line, &len, inFile)) != -1)
+  {
+    if(strcmp(line, linetorem) != 0)
+    {
+        fprintf(outFile, "%s", line);
+    }
+  }
+  fclose(inFile);
+  fclose(outFile);
+  remove("file_processing_tasks.txt");
+   ret = rename("file_processing_tasks.txt", "tmp.txt");
+   if(ret == 0) {
+      printf("File renamed successfully");
+   } else {
+      printf("Error: unable to rename the file");
+   }
 }

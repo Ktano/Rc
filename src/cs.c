@@ -19,20 +19,18 @@
 int main(int argc, char **argv)
 {
 
-  int listenfd,connfd, pid, tcp_pid, bytesRead, working_servers, servers = 0, fp;
+  int listenfd,connfd = 0, pid, tcp_pid, bytesRead, working_servers, servers = 0, fp;
   char buffer[BUFFER_MAX];
   int fd_wsservers[10], fd_position = 0;
-  char requestedFPT[4], filename[10], *fileToWs;
+  char requestedFPT[4], filename[10], fileToWs[BUFFER_MAX];
   int bytesToRead, fileToWsCounter = 1, i;
   char *token;
   char response[BUFFER_MAX], tasks[BUFFER_MAX];
   char from_ws[BUFFER_MAX];
-  int wordcount_results[10];
+  /*int wordcount_results[10];
   char *longestword_results[10];
-  struct sockaddr clientaddr;
-  socklen_t addr_size;
-  char host[6], port[16];
-
+    char host[6], port[16];*/
+  struct sockaddr_in clientaddr;
 
 
 
@@ -42,17 +40,19 @@ int main(int argc, char **argv)
   }
   else if (pid != 0)
   {
-    while (1)
-    { 
+    /*waits for a command from a user*/
+    if ((listenfd = TCPlisten(GROUP_PORT)) == -1)
+      printf ("ERROR: %s",strerror(errno));
 
-      /*waits for a command from a user*/
-      listenfd=0;
-      if ((connfd = TCPacceptint(&listenfd,GROUP_PORT)) == -1)
+    while (1)
+    {
+
+      if ((connfd = TCPacceptint(listenfd,clientaddr)) == -1)
       {
-        printf ("ERROR: %s\n",strerror(errno));
+        printf ("ERROR: %s",strerror(errno));
         continue;
       }
-      printf("accpeted connection\n");
+
       /* forks*/
       if ((tcp_pid = fork()) == -1)
       {
@@ -69,10 +69,7 @@ int main(int argc, char **argv)
         bytesRead = read(connfd, buffer, BUFFER_MAX - 1);
         buffer[bytesRead] = '\0';
 
-        addr_size = sizeof(struct sockaddr_in);
 
-        getsockname(connfd, &clientaddr, &addr_size);
-        getnameinfo((struct sockaddr *)&clientaddr, addr_size, host, sizeof(host), port, sizeof(port), NI_NUMERICHOST | NI_NUMERICSERV);
 
         tasks[0]='\0';
         token = strtok(buffer, " \n");
@@ -183,7 +180,7 @@ int main(int argc, char **argv)
                   bytesToRead = atoi(token);
 
                   token = strtok(NULL, PROTOCOL_DIVIDER);
-                  wordcount_results[i] = atoi(token);
+                  /*wordcount_results[i] = atoi(token);*/
                 }
                 else if (strcmp(requestedFPT, PTC_LONGESTWORD))
                 {
@@ -212,7 +209,7 @@ int main(int argc, char **argv)
             close(fd_wsservers[i]);
           }
         }
-        shutdown(connfd, SHUT_WR);
+
         close(connfd);
         exit(EXIT_SUCCESS);
       }
@@ -222,9 +219,9 @@ int main(int argc, char **argv)
     }
     exit(EXIT_SUCCESS);
   }
-
   else
   {
+    close(connfd);
     while (1)
     {
       UDPconnect(GROUP_PORT);
