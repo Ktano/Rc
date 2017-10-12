@@ -20,7 +20,7 @@ folders:
 clear:
 	clear
 clean:
-	rm -f -d -r *.o user input_files output_files WS cs
+	rm -f -d -r *.o user input_files output_files WS CS
 zip:
 	zip ../proj_6.zip *.c *.h makefile
 testuser:
