@@ -20,6 +20,7 @@ int main(int argc, char **argv)
 {
 
   int listenfd,connfd = 0, pid, tcp_pid, bytesRead, working_servers, servers = 0, fp;
+  int port=GROUP_PORT;
   char buffer[BUFFER_MAX];
   int fd_wsservers[10], fd_position = 0;
   char requestedFPT[4], filename[BUFFER_MAX], fileToWs[BUFFER_MAX];
@@ -32,16 +33,21 @@ int main(int argc, char **argv)
     char host[6], port[16];*/
   struct sockaddr_in clientaddr;
 
-
+    /* reads the inputs from argv and sets the server name and port*/
+    for (i = 0; i < argc; i++)
+    {
+      if (strcmp(argv[i], "-p") == 0)
+        port = atoi(argv[i + 1]);
+    }
 
   if ((pid = fork()) == -1)
   {
     printf("ERROR: %s\n", strerror(errno));
   }
-  else if (pid != 0)
+  else if (pid == 0)
   {
     /*waits for a command from a user*/
-    if ((listenfd = TCPlisten(GROUP_PORT)) == -1)
+    if ((listenfd = TCPlisten(port)) == -1)
       printf ("ERROR: %s",strerror(errno));
 
     while (1)
@@ -129,7 +135,7 @@ int main(int argc, char **argv)
 
           fp = open(filename, O_CREAT | O_WRONLY, S_IRWXU | S_IRWXG);
 
-          token = strtok(buffer, "");
+          token = strtok(NULL, "");
           write(fp, token, strlen(token));
           bytesToRead -= strlen(token);
 
@@ -221,10 +227,9 @@ int main(int argc, char **argv)
   }
   else
   {
-    close(connfd);
     while (1)
     {
-      UDPconnect(GROUP_PORT);
+      UDPconnect(port);
     }
   }
 

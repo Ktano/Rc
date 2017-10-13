@@ -206,9 +206,6 @@ int UDPconnect(int port)
 
     strcat(ip_and_port, token);
     strcat(ip_and_port, "\n");
-
-    strcat(writeonscreen, token);
-    strcat(writeonscreen, "\n");
     printf("%s", writeonscreen);
 
     for (i = 0; FTPs[i] != NULL; i++)
@@ -252,9 +249,6 @@ int UDPconnect(int port)
     strcat(ip_and_port, " ");
     strcat(ip_and_port, token);
     strcat(ip_and_port, "\n");
-
-    strcat(writeonscreen, token);
-    strcat(writeonscreen, "\n");
     printf("%s", writeonscreen);
 
     for (i = 0; FTPs[i] != NULL; i++)
@@ -400,9 +394,10 @@ int filesplitter(char *file, int servers, int filecounter)
 
   linesperfile = lines / servers;
 
+  ch=fgetc(sourcefile);
   while (!feof(sourcefile))
   {
-    fgetc(sourcefile);
+    
     if (linesperfile < counter && files < servers)
       {
         fclose(partitionfile);
@@ -414,8 +409,9 @@ int filesplitter(char *file, int servers, int filecounter)
     if (ch == '\n' || ch == '\r')
       counter++;
     fputc(ch, partitionfile);
-    
-  }
+    ch=fgetc(sourcefile);
+      }
+  fclose(partitionfile);
   fclose(sourcefile);
   return 0;
 }
@@ -425,26 +421,30 @@ int FTPcounter(char *filename, char *ftp)
 {
   FILE *fp;
   int counter = 0, ch, ftplen;
-  int i, same;
+  int i, same,first;
 
   ftplen = strlen(ftp);
 
   if (NULL == (fp = fopen(filename, "r")))
     return -1;
 
+    first=1;
+
   while (EOF != (ch = fgetc(fp)))
   {
-    if (ch == '\n')
+    if ((ch == '\n') || first==1)
     {
       same = 1;
       for (i = 0; i < ftplen; i++)
       {
-        ch = fgetc(fp);
+        if(first!=1)
+          ch = fgetc(fp);
         if (ch != ftp[i])
         {
           same = 0;
           break;
         }
+        first=0;
       }
     }
     if (same == 1)
