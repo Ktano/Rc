@@ -19,26 +19,25 @@
 int main(int argc, char **argv)
 {
 
-  int listenfd,connfd = 0, pid, tcp_pid, bytesRead, working_servers, servers = 0, fp;
-  int port=GROUP_PORT;
-  char buffer[BUFFER_MAX];
+  int listenfd, connfd = 0, pid, tcp_pid, bytesRead, working_servers, servers = 0, fp;
+  int port = GROUP_PORT, flw_total;
+  char buffer[BUFFER_MAX], FLWbuffer[BUFFER_MAX];
   int fd_wsservers[10], fd_position = 0;
-  char requestedFPT[4], filename[BUFFER_MAX], fileToWs[BUFFER_MAX];
+  char requestedFPT[4], filename[BUFFER_MAX], fileToWs[BUFFER_MAX], report[BUFFER_MAX];
   int bytesToRead, fileToWsCounter = 1, i;
   char *token;
   char response[BUFFER_MAX], tasks[BUFFER_MAX];
   char from_ws[BUFFER_MAX];
-  /*int wordcount_results[10];
+  int wordcount_results[10], wordcount_merged = 0;
   char *longestword_results[10];
-    char host[6], port[16];*/
   struct sockaddr_in clientaddr;
 
-    /* reads the inputs from argv and sets the server name and port*/
-    for (i = 0; i < argc; i++)
-    {
-      if (strcmp(argv[i], "-p") == 0)
-        port = atoi(argv[i + 1]);
-    }
+  /* reads the inputs from argv and sets the server name and port*/
+  for (i = 0; i < argc; i++)
+  {
+    if (strcmp(argv[i], "-p") == 0)
+      port = atoi(argv[i + 1]);
+  }
 
   if ((pid = fork()) == -1)
   {
@@ -48,14 +47,14 @@ int main(int argc, char **argv)
   {
     /*waits for a command from a user*/
     if ((listenfd = TCPlisten(port)) == -1)
-      printf ("ERROR: %s",strerror(errno));
+      printf("ERROR: %s", strerror(errno));
 
     while (1)
     {
 
-      if ((connfd = TCPacceptint(listenfd,clientaddr)) == -1)
+      if ((connfd = TCPacceptint(listenfd, clientaddr)) == -1)
       {
-        printf ("ERROR: %s",strerror(errno));
+        printf("ERROR: %s", strerror(errno));
         continue;
       }
 
@@ -75,48 +74,41 @@ int main(int argc, char **argv)
         bytesRead = read(connfd, buffer, BUFFER_MAX - 1);
         buffer[bytesRead] = '\0';
 
-
-
-        tasks[0]='\0';
+        tasks[0] = '\0';
         token = strtok(buffer, " \n");
 
-        if (strcmp(token, TCP_COMMAND_LIST)==0)
+        if (strcmp(token, TCP_COMMAND_LIST) == 0)
         {
 
           /*printf("List request: %s %s\n", host, port);*/
 
-          if ( FTPcounter("file_processing_tasks.txt", PTC_WORDCOUNT) > 0)
+          if (FTPcounter("file_processing_tasks.txt", PTC_WORDCOUNT) > 0)
           {
             servers++;
             strcat(tasks, " WCT");
-
           }
-          if ( FTPcounter("file_processing_tasks.txt", PTC_LONGESTWORD) > 0)
+          if (FTPcounter("file_processing_tasks.txt", PTC_LONGESTWORD) > 0)
           {
             servers++;
             strcat(tasks, " FLW");
-
           }
-          if ( FTPcounter("file_processing_tasks.txt", PTC_UPPER) > 0)
+          if (FTPcounter("file_processing_tasks.txt", PTC_UPPER) > 0)
           {
             servers++;
             strcat(tasks, " UPP");
-
           }
           if (FTPcounter("file_processing_tasks.txt", PTC_LOWER) > 0)
           {
             servers++;
             strcat(tasks, " LOW");
-
           }
 
-          if(servers==0)
+          if (servers == 0)
             sprintf(response, "FPT EOF\n");
           else
-            sprintf(response, "FPT %d%s\n",servers,tasks);
+            sprintf(response, "FPT %d%s\n", servers, tasks);
 
           write(connfd, response, strlen(response));
-
         }
 
         else if (strcmp(token, "REQ") == 0)
@@ -153,8 +145,9 @@ int main(int argc, char **argv)
           working_servers = FTPcounter("file_processing_tasks.txt", requestedFPT);
           filesplitter(filename, working_servers, getpid());
           fd_position = connectToWS(filename, requestedFPT, fd_wsservers, working_servers);
-          if(working_servers==0){
-            write(connfd,"REP EOF\n",8);
+          if (working_servers == 0)
+          {
+            write(connfd, "REP EOF\n", 8);
           }
           for (i = 0; i < fd_position; i++)
           {
@@ -186,12 +179,14 @@ int main(int argc, char **argv)
                   bytesToRead = atoi(token);
 
                   token = strtok(NULL, PROTOCOL_DIVIDER);
-                  /*wordcount_results[i] = atoi(token);*/
+                  wordcount_results[i] = atoi(token);
                 }
                 else if (strcmp(requestedFPT, PTC_LONGESTWORD))
                 {
                   token = strtok(NULL, PROTOCOL_DIVIDER);
                   bytesToRead = atoi(token);
+
+                  read(fd_wsservers[i], longestword_results[i], bytesToRead);
                 }
               }
               if (strcmp(token, "F"))
@@ -208,6 +203,26 @@ int main(int argc, char **argv)
                 }
               }
             }
+          }
+
+          if (strcmp(requestedFPT, PTC_WORDCOUNT))
+          {
+            wordcount_merged = agregateWordCount(wordcount_results, fd_position);
+            sprintf(buffer,"%d",wordcount_merged);
+            sprintf(report, "REP R %d %s\n", (int)strlen(buffer), buffer);
+            write(connfd, report, BUFFER_MAX);
+          }
+          else if (strcmp(requestedFPT, PTC_LONGESTWORD))
+          {
+            flw_total = agregateLongestWord(longestword_results, fd_position, FLWbuffer, BUFFER_MAX);
+            snprintf(report, 10 + 2 * flw_total, "REP R %d %s\n", flw_total, buffer);
+            write(connfd, report, BUFFER_MAX);
+          }
+          else if (strcmp(requestedFPT, PTC_UPPER))
+          {
+          }
+          else if (strcmp(requestedFPT, PTC_LOWER))
+          {
           }
 
           for (i = 0; i < fd_position; i++)

@@ -24,6 +24,6 @@ clean:
 zip:
 	zip ../proj_6.zip *.c *.h makefile
 testuser:
-	./user -n tejo.tecnico.ulisboa.pt -p 58011 < ../testfiles/testwar
+	./user -n tejo.tecnico.ulisboa.pt -p 58011 
 testws:
 	./WS WCT -n tejo.tecnico.ulisboa.pt -e 58011 -p 59000

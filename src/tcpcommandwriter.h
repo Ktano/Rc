@@ -28,5 +28,6 @@ int sendUDP(char *servername,int UDPport,char *msg, char* reply,int size);
 int FTPcounter(char* filename, char* ftp);
 int connectToWS(char *filename, char *requestedFPT, int *fd_wsservers, int max_servers);
 void LSTcommand(char *filename, char *requestedFPT);
+void lineDeleter(char* linetorem);
 
 #endif
