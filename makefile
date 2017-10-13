@@ -1,7 +1,7 @@
 user: clear tcpcommandwriter.o commandlinereader.o fpt.o user.o WS.o cs.o folders
 	gcc -g -o user tcpcommandwriter.o commandlinereader.o fpt.o user.o
 	gcc -g -o WS tcpcommandwriter.o commandlinereader.o fpt.o WS.o
-	gcc -g -o CS tcpcommandwriter.o commandlinereader.o fpt.o cs.o
+	gcc -g -o cs tcpcommandwriter.o commandlinereader.o fpt.o cs.o
 tcpcommandwriter.o: tcpcommandwriter.c
 	gcc -g -Wall -pedantic -c tcpcommandwriter.c
 commandlinereader.o: commandlinereader.c

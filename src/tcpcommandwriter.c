@@ -148,7 +148,6 @@ int UDPconnect(int port)
   char ip_and_port[25];
   char writeonfile[30];
   char *FTPs[99];
-  char *linesToDel[99];
 
   fd = socket(AF_INET, SOCK_DGRAM, 0);
 
@@ -215,34 +214,13 @@ int UDPconnect(int port)
       write(sourcefile, writeonfile, strlen(writeonfile));
       memset(writeonfile, 0, sizeof(writeonfile));
     }
+    memset(writeonscreen, 0, sizeof(writeonscreen));
 
     sendto(fd, "RAK OK\n", 8, 0, (struct sockaddr *)&clientaddr, addrlen);
   }
   else if (strcmp(token, "UNR") == 0)
   {
-
-    sprintf(writeonscreen, "- ");
-
-    token = strtok(NULL, PROTOCOL_DIVIDER);
-
-    while (strlen(token) == 3)
-    {
-      if ((strlen(taskDescription(token)) > 0))
-      {
-        strcat(writeonscreen, token);
-        strcat(writeonscreen, " ");
-        linesToDel[counter] = token;
-        counter++;
-        token = strtok(NULL, PROTOCOL_DIVIDER);
-      }
-      else
-      {
-        sendto(fd, "UAK NOK\n", 8, 0, (struct sockaddr *)&clientaddr, addrlen);
-        close(sourcefile);
-        close(fd);
-        return -1;
-      }
-    }
+    token = strtok(NULL, "");
 
     strcat(ip_and_port, token);
     token = strtok(NULL, PROTOCOL_DIVIDER);
@@ -251,10 +229,9 @@ int UDPconnect(int port)
     strcat(ip_and_port, "\n");
     printf("%s", writeonscreen);
 
-    for (i = 0; FTPs[i] != NULL; i++)
-    {
-      strcat(linesToDel[i], ip_and_port);
-    }
+    lineDeleter(ip_and_port);
+
+    sendto(fd, "UAK OK\n", 8, 0, (struct sockaddr *)&clientaddr, addrlen);
   }
   else
   {
@@ -394,23 +371,23 @@ int filesplitter(char *file, int servers, int filecounter)
 
   linesperfile = lines / servers;
 
-  ch=fgetc(sourcefile);
+  ch = fgetc(sourcefile);
   while (!feof(sourcefile))
   {
-    
+
     if (linesperfile < counter && files < servers)
-      {
-        fclose(partitionfile);
-        counter = 1;
-        files++;
-        sprintf(partition, "input_files/%05d%02d.txt", filecounter, files);
-        partitionfile = fopen(partition, "w");
-      }
+    {
+      fclose(partitionfile);
+      counter = 1;
+      files++;
+      sprintf(partition, "input_files/%05d%02d.txt", filecounter, files);
+      partitionfile = fopen(partition, "w");
+    }
     if (ch == '\n' || ch == '\r')
       counter++;
     fputc(ch, partitionfile);
-    ch=fgetc(sourcefile);
-      }
+    ch = fgetc(sourcefile);
+  }
   fclose(partitionfile);
   fclose(sourcefile);
   return 0;
@@ -421,30 +398,30 @@ int FTPcounter(char *filename, char *ftp)
 {
   FILE *fp;
   int counter = 0, ch, ftplen;
-  int i, same,first;
+  int i, same, first;
 
   ftplen = strlen(ftp);
 
   if (NULL == (fp = fopen(filename, "r")))
     return -1;
 
-    first=1;
+  first = 1;
 
   while (EOF != (ch = fgetc(fp)))
   {
-    if ((ch == '\n') || first==1)
+    if ((ch == '\n') || first == 1)
     {
       same = 1;
       for (i = 0; i < ftplen; i++)
       {
-        if(first!=1)
+        if (first != 1)
           ch = fgetc(fp);
         if (ch != ftp[i])
         {
           same = 0;
           break;
         }
-        first=0;
+        first = 0;
       }
     }
     if (same == 1)
@@ -532,14 +509,16 @@ void LSTcommand(char *filename, char *requestedFPT)
 void lineDeleter(char *linetorem)
 {
   char *inFileName = "file_processing_tasks.txt";
-  char *outFileName = "tmp.txt";
-  /*char* linetorem = "WCT 192.168.1.2 58000\n";*/
-  FILE *inFile = fopen(inFileName, "r");
+  char *outFileName = "file_processing_tasks.txt";
+
+  rename(inFileName, "delete.txt");
+
+  FILE *inFile = fopen("delete.txt", "r");
   FILE *outFile = fopen(outFileName, "w+");
+
   char *line = NULL;
   size_t len = 0;
   ssize_t read;
-  int ret;
   if (inFile == NULL)
   {
     printf("Open Error");
@@ -547,21 +526,14 @@ void lineDeleter(char *linetorem)
 
   while ((read = getline(&line, &len, inFile)) != -1)
   {
-    if (strcmp(line, linetorem) != 0)
+    printf("%s", line);
+
+    if (strstr(line, linetorem) == 0)
     {
       fprintf(outFile, "%s", line);
     }
   }
   fclose(inFile);
   fclose(outFile);
-  remove("file_processing_tasks.txt");
-  ret = rename("file_processing_tasks.txt", "tmp.txt");
-  if (ret == 0)
-  {
-    printf("File renamed successfully");
-  }
-  else
-  {
-    printf("Error: unable to rename the file");
-  }
+  remove("delete.txt");
 }
