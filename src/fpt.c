@@ -105,7 +105,7 @@ int fileLongestWord(char *filename, char *buffer, int buffersize)
 
 /* Function to find the result of multiple find longest words*/
 
-int agregateLongestWord(char **words, int length, char *buffer, char buffersize)
+int agregateLongestWord(char **words, int length, char *buffer, int buffersize)
 {
   int total = 0, i, len;
 

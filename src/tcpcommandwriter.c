@@ -148,7 +148,6 @@ int UDPconnect(int port)
   char ip_and_port[25];
   char writeonfile[30];
   char *FTPs[99];
-  char *linesToDel[99];
 
   fd = socket(AF_INET, SOCK_DGRAM, 0);
 
@@ -218,49 +217,20 @@ int UDPconnect(int port)
       write(sourcefile, writeonfile, strlen(writeonfile));
       memset(writeonfile, 0, sizeof(writeonfile));
     }
+    memset(writeonscreen, 0, sizeof(writeonscreen));
+
 
     sendto(fd, "RAK OK\n", 8, 0, (struct sockaddr *)&clientaddr, addrlen);
   }
   else if (strcmp(token, "UNR") == 0)
   {
-
-    sprintf(writeonscreen, "- ");
-
-    token = strtok(NULL, PROTOCOL_DIVIDER);
-
-    while (strlen(token) == 3)
-    {
-      if ((strlen(taskDescription(token)) > 0))
-      {
-        strcat(writeonscreen, token);
-        strcat(writeonscreen, " ");
-        linesToDel[counter] = token;
-        counter++;
-        token = strtok(NULL, PROTOCOL_DIVIDER);
-      }
-      else
-      {
-        sendto(fd, "UAK NOK\n", 8, 0, (struct sockaddr *)&clientaddr, addrlen);
-        close(sourcefile);
-        close(fd);
-        return -1;
-      }
-    }
+    token = strtok(NULL, "");
 
     strcat(ip_and_port, token);
-    token = strtok(NULL, PROTOCOL_DIVIDER);
-    strcat(ip_and_port, " ");
-    strcat(ip_and_port, token);
-    strcat(ip_and_port, "\n");
 
-    strcat(writeonscreen, token);
-    strcat(writeonscreen, "\n");
-    printf("%s", writeonscreen);
+    lineDeleter(ip_and_port);
 
-    for (i = 0; FTPs[i] != NULL; i++)
-    {
-      strcat(linesToDel[i], ip_and_port);
-    }
+    sendto(fd, "UAK OK\n", 8, 0, (struct sockaddr *)&clientaddr, addrlen);
   }
   else
   {
@@ -414,7 +384,7 @@ int filesplitter(char *file, int servers, int filecounter)
     if (ch == '\n' || ch == '\r')
       counter++;
     fputc(ch, partitionfile);
-    
+
   }
   fclose(sourcefile);
   return 0;
@@ -532,14 +502,17 @@ void LSTcommand(char *filename, char *requestedFPT)
 void lineDeleter(char *linetorem)
 {
   char *inFileName = "file_processing_tasks.txt";
-  char *outFileName = "tmp.txt";
-  /*char* linetorem = "WCT 192.168.1.2 58000\n";*/
-  FILE *inFile = fopen(inFileName, "r");
+  char *outFileName = "file_processing_tasks.txt";
+
+  rename(inFileName, "delete.txt");
+
+  FILE *inFile = fopen("delete.txt", "r");
   FILE *outFile = fopen(outFileName, "w+");
+
+
   char *line = NULL;
   size_t len = 0;
   ssize_t read;
-  int ret;
   if (inFile == NULL)
   {
     printf("Open Error");
@@ -547,21 +520,14 @@ void lineDeleter(char *linetorem)
 
   while ((read = getline(&line, &len, inFile)) != -1)
   {
-    if (strcmp(line, linetorem) != 0)
+    printf("%s", line);
+
+    if (strstr(line, linetorem) == 0)
     {
       fprintf(outFile, "%s", line);
     }
   }
   fclose(inFile);
   fclose(outFile);
-  remove("file_processing_tasks.txt");
-  ret = rename("file_processing_tasks.txt", "tmp.txt");
-  if (ret == 0)
-  {
-    printf("File renamed successfully");
-  }
-  else
-  {
-    printf("Error: unable to rename the file");
-  }
+  remove("delete.txt");
 }
