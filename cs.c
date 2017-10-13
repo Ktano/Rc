@@ -214,7 +214,7 @@ int main(int argc, char **argv)
           else if (strcmp(requestedFPT, PTC_LONGESTWORD))
           {
             flw_total = agregateLongestWord( longestword_results, fd_position, FLWbuffer, BUFFER_MAX);
-            snprintf(report, 10 + flw_total + sizeof(buffer),"REP R %d %s", flw_total, buffer);
+            snprintf(report, 10 + 2*flw_total,"REP R %d %s", flw_total, buffer);
 
           }
           else if (strcmp(requestedFPT, PTC_UPPER))
