@@ -20,16 +20,15 @@ int main(int argc, char **argv)
 {
 
   int listenfd,connfd = 0, pid, tcp_pid, bytesRead, working_servers, servers = 0, fp;
-  char buffer[BUFFER_MAX];
+  char buffer[BUFFER_MAX], FLWbuffer[BUFFER_MAX];
   int fd_wsservers[10], fd_position = 0;
-  char requestedFPT[4], filename[BUFFER_MAX], fileToWs[BUFFER_MAX];
+  char requestedFPT[4], filename[BUFFER_MAX], fileToWs[BUFFER_MAX], report[BUFFER_MAX];
   int bytesToRead, fileToWsCounter = 1, i;
   char *token;
   char response[BUFFER_MAX], tasks[BUFFER_MAX];
   char from_ws[BUFFER_MAX];
-  /*int wordcount_results[10];
+  int wordcount_results[10], wordcount_merged = 0;
   char *longestword_results[10];
-    char host[6], port[16];*/
   struct sockaddr_in clientaddr;
 
 
@@ -180,12 +179,14 @@ int main(int argc, char **argv)
                   bytesToRead = atoi(token);
 
                   token = strtok(NULL, PROTOCOL_DIVIDER);
-                  /*wordcount_results[i] = atoi(token);*/
+                  wordcount_results[i] = atoi(token);
                 }
                 else if (strcmp(requestedFPT, PTC_LONGESTWORD))
                 {
                   token = strtok(NULL, PROTOCOL_DIVIDER);
                   bytesToRead = atoi(token);
+
+                  read(longestword_results, from_ws, bytesToRead);
                 }
               }
               if (strcmp(token, "F"))
@@ -203,6 +204,28 @@ int main(int argc, char **argv)
               }
             }
           }
+
+          if (strcmp(requestedFPT, PTC_WORDCOUNT))
+          {
+            wordcount_merged = agregateWordCount(wordcount_results, fd_position);
+            snprintf(report, 10 + 2*sizeof(wordcount_merged),"REP R %d %d", sizeof(wordcount_merged), wourdcount_merged);
+            write(connfd, report, BUFFER_MAX);
+          }
+          else if (strcmp(requestedFPT, PTC_LONGESTWORD))
+          {
+            flw_total = agregateLongestWord( longestword_results, fd_position, FLWbuffer, BUFFER_MAX);
+            snprintf(report, 10 + flw_total + sizeof(buffer),"REP R %d %s", flw_total, buffer);
+
+          }
+          else if (strcmp(requestedFPT, PTC_UPPER))
+          {
+
+          }
+          else if (strcmp(requestedFPT, PTC_LOWER))
+          {
+
+          }
+
 
           for (i = 0; i < fd_position; i++)
           {

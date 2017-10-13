@@ -224,7 +224,6 @@ int UDPconnect(int port)
   }
   else if (strcmp(token, "UNR") == 0)
   {
-
     token = strtok(NULL, "");
 
     strcat(ip_and_port, token);
